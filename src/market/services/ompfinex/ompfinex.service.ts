@@ -1,13 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Centrifuge } from 'centrifuge';
-import { endpoints } from 'src/market/environments/endpoints';
-import { firstValueFrom, map, Subject } from 'rxjs';
-import { HttpService } from '@nestjs/axios';
-import {
-  OmpfinexDataResponse,
-  OmpfinexMarket,
-  OmpfinexMarketDto,
-} from 'src/market/interfaces/ompfinex.interface';
+import { Injectable, Logger } from "@nestjs/common";
+import { Centrifuge } from "centrifuge";
+import { endpoints } from "src/market/environments/endpoints";
+import { catchError, firstValueFrom, map, Subject } from "rxjs";
+import { HttpService } from "@nestjs/axios";
+import { OmpfinexDataResponse, OmpfinexMarket, OmpfinexMarketDto } from "src/market/interfaces/ompfinex.interface";
+import { WebSocket } from "ws";
+import { AxiosError } from "axios";
 
 @Injectable()
 export class OmpfinexService {
@@ -22,9 +20,13 @@ export class OmpfinexService {
   public async getOmpfinexMarkets() {
     const markets = await firstValueFrom(
       this.httpService
-        .get<
-          OmpfinexDataResponse<OmpfinexMarketDto[]>
-        >(`${endpoints.ompfinexApiBaseUrl}/v1/market`)
+        .get<OmpfinexDataResponse<OmpfinexMarketDto[]>>(
+          `${endpoints.ompfinexApiBaseUrl}/v1/market`,
+          {
+            withCredentials: true,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
         .pipe(
           map((res) => {
             return res.data.data
@@ -48,6 +50,10 @@ export class OmpfinexService {
                 } as OmpfinexMarket;
               })
               .filter((market) => !!market);
+          }),
+          catchError((error: AxiosError) => {
+            this.logger.error(error.response.statusText);
+"An error happened!"n error happened!';
           }),
         ),
     );

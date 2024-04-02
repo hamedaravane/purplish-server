@@ -7,13 +7,8 @@ import { MarketController } from './controllers/market/market.controller';
 import { MarketService } from './services/market/market.service';
 
 @Module({
-  providers: [
-    KucoinService,
-    HttpModule,
-    OmpfinexService,
-    BinanceService,
-    MarketService,
-  ],
+  imports: [HttpModule],
+  providers: [KucoinService, OmpfinexService, BinanceService, MarketService],
   controllers: [MarketController],
 })
 export class MarketModule {}

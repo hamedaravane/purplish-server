@@ -66,7 +66,9 @@ export class KucoinService {
 
   private connect(endpoint: string) {
     if (!this.webSocketSubject || this.webSocketSubject.closed) {
-      this.webSocketSubject = webSocket(endpoint);
+      this.webSocketSubject = webSocket({
+        url: endpoint,
+      });
       this.onConnect();
     }
   }
