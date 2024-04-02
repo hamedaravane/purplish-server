@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { MarketService } from 'src/market/services/market/market.service';
 
 @Controller('market')

@@ -1,11 +1,15 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Centrifuge } from "centrifuge";
-import { endpoints } from "src/market/environments/endpoints";
-import { catchError, firstValueFrom, map, Subject } from "rxjs";
-import { HttpService } from "@nestjs/axios";
-import { OmpfinexDataResponse, OmpfinexMarket, OmpfinexMarketDto } from "src/market/interfaces/ompfinex.interface";
-import { WebSocket } from "ws";
-import { AxiosError } from "axios";
+import { Injectable, Logger } from '@nestjs/common';
+import { Centrifuge } from 'centrifuge';
+import { endpoints } from 'src/market/environments/endpoints';
+import { catchError, firstValueFrom, map, Subject } from 'rxjs';
+import { HttpService } from '@nestjs/axios';
+import {
+  OmpfinexDataResponse,
+  OmpfinexMarket,
+  OmpfinexMarketDto,
+} from 'src/market/interfaces/ompfinex.interface';
+import { WebSocket } from 'ws';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class OmpfinexService {
@@ -53,7 +57,7 @@ export class OmpfinexService {
           }),
           catchError((error: AxiosError) => {
             this.logger.error(error.response.statusText);
-            throw"An error happened!"';
+            throw 'An error happened!';
           }),
         ),
     );
