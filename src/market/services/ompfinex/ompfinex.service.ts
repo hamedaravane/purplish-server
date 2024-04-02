@@ -53,7 +53,7 @@ export class OmpfinexService {
           }),
           catchError((error: AxiosError) => {
             this.logger.error(error.response.statusText);
-"An error happened!"n error happened!';
+            throw"An error happened!"';
           }),
         ),
     );
