@@ -4,16 +4,21 @@ import { endpoints } from 'src/market/environments/endpoints';
 import { catchError, firstValueFrom, map, Subject } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 import {
+  convertOmpfinexWsResponse,
   OmpfinexDataResponse,
   OmpfinexMarket,
   OmpfinexMarketDto,
+  OmpfinexMarketWebsocket,
+  OmpfinexMarketWebsocketDto,
 } from 'src/market/interfaces/ompfinex.interface';
 import { WebSocket } from 'ws';
 import { AxiosError } from 'axios';
 
 @Injectable()
 export class OmpfinexService {
-  public readonly ompfinexWSResponseSubject = new Subject();
+  public readonly ompfinexWsResponseSubject = new Subject<
+    OmpfinexMarketWebsocket[]
+  >();
   public readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
   private readonly logger = new Logger(OmpfinexService.name);
   private readonly client = new Centrifuge(endpoints.ompfinexStreamBaseUrl, {
@@ -29,7 +34,7 @@ export class OmpfinexService {
           `${endpoints.ompfinexApiBaseUrl}/v1/market`,
           {
             headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'Node.js/v20.11.1',
             },
           },
         )
@@ -58,7 +63,7 @@ export class OmpfinexService {
               .filter((market) => !!market);
           }),
           catchError((error: AxiosError) => {
-            throw error.response.data;
+            throw error;
           }),
         ),
     );
@@ -78,7 +83,7 @@ export class OmpfinexService {
   }
 
   createSubscription() {
-    const sub = this.client.newSubscription('public-market:r-price-sm');
+    const sub = this.client.newSubscription('public-market:r-price-ag');
     sub.on('subscribing', () => {
       this.logger.log('subscribing to market channel...');
     });
@@ -89,7 +94,14 @@ export class OmpfinexService {
       this.logger.log('on subscribing error happened', err);
     });
     sub.on('publication', (ctx) => {
-      this.ompfinexWSResponseSubject.next(ctx.data);
+      const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
+      this.ompfinexWsResponseSubject.next(
+        ws.data.map<OmpfinexMarketWebsocket>(
+          (market: OmpfinexMarketWebsocketDto): OmpfinexMarketWebsocket => {
+            return convertOmpfinexWsResponse(market, this.ompfinexMarketsMap);
+          },
+        ),
+      );
     });
     sub.subscribe();
   }

@@ -67,11 +67,30 @@ export interface OmpfinexMarketWebsocketDto {
 
 export interface OmpfinexMarketWebsocket {
   id: number;
-  currencyId: string;
-  currencyName: string;
-  iconPath: string;
-  name: string;
+  currencyId?: string;
+  currencyName?: string;
+  iconPath?: string;
+  name?: string;
   timestamp: number;
   volume: string;
   price: string;
+}
+
+export function convertOmpfinexWsResponse(
+  ws: OmpfinexMarketWebsocketDto,
+  marketMap: Map<string, OmpfinexMarket>,
+): OmpfinexMarketWebsocket {
+  const foundMarket = Array.from(marketMap, ([, value]) => value).find(
+    (market) => ws.m === market.id,
+  );
+  return {
+    id: ws.m,
+    currencyId: foundMarket?.baseCurrency.id,
+    currencyName: foundMarket?.baseCurrency.name,
+    iconPath: foundMarket?.baseCurrency.iconPath,
+    name: foundMarket?.name,
+    timestamp: ws.t,
+    volume: ws.v,
+    price: ws.price,
+  };
 }

@@ -16,7 +16,6 @@ import {
 import { AxiosError } from 'axios';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
-import { WebSocket } from 'ws';
 
 @Injectable()
 export class KucoinService {

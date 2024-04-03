@@ -30,12 +30,32 @@ export class MarketService {
 
   combineMarkets() {
     return combineLatest([
+      this.ompfinexService.ompfinexWsResponseSubject,
       this.kucoinService.kucoinWSResponseSubject,
       this.binanceService.binanceWSResponseSubject,
-      this.ompfinexService.ompfinexWSResponseSubject,
     ]).pipe(
-      map(([kucoin, binance, omp]) => {
-        return {};
+      map(([omp, kucoin, binance]) => {
+        return omp.map((ompMarket) => {
+          return {
+            currencyId: ompMarket.currencyId,
+            currencyName: ompMarket.currencyName,
+            iconPath: ompMarket.iconPath,
+            name: ompMarket.name,
+            ompfinex: {
+              timestamp: ompMarket.timestamp,
+              volume: ompMarket.volume,
+              price: ompMarket.price,
+            },
+            kucoin: {
+              volume: ompMarket.volume,
+              price: ompMarket.price,
+            },
+            binance: {
+              volume: ompMarket.volume,
+              price: ompMarket.price,
+            },
+          };
+        });
       }),
     );
   }
