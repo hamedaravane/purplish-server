@@ -19,6 +19,7 @@ export class OmpfinexService {
   private readonly client = new Centrifuge(endpoints.ompfinexStreamBaseUrl, {
     websocket: WebSocket,
   });
+
   constructor(private readonly httpService: HttpService) {}
 
   public async getOmpfinexMarkets() {
@@ -27,8 +28,9 @@ export class OmpfinexService {
         .get<OmpfinexDataResponse<OmpfinexMarketDto[]>>(
           `${endpoints.ompfinexApiBaseUrl}/v1/market`,
           {
-            withCredentials: true,
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
           },
         )
         .pipe(
@@ -56,8 +58,7 @@ export class OmpfinexService {
               .filter((market) => !!market);
           }),
           catchError((error: AxiosError) => {
-            this.logger.error(error.response.statusText);
-            throw 'An error happened!';
+            throw error.response.data;
           }),
         ),
     );
