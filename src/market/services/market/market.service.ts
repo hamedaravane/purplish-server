@@ -21,8 +21,8 @@ export class MarketService {
       .then(() => {
         this.ompfinexService.createConnection();
         this.ompfinexService.createSubscription();
-        this.binanceService.createSubscription();
-        this.kucoinService.createConnection().then();
+        this.binanceService.createConnection();
+        this.kucoinService.createConnection();
       })
       .catch((reason) => {
         this.logger.error(reason);
@@ -32,8 +32,8 @@ export class MarketService {
   combineMarkets() {
     return combineLatest([
       this.ompfinexService.ompfinexWsResponseSubject,
-      this.kucoinService.kucoinWSResponseSubject,
-      this.binanceService.binanceWSResponseSubject,
+      this.kucoinService.kucoinWsResponseSubject,
+      this.binanceService.binanceWsResponseSubject,
     ]).pipe(
       map(([omp, kucoin, binance]) => {
         return omp.map((ompMarket) => {

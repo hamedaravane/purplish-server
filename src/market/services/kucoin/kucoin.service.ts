@@ -8,38 +8,31 @@ import {
   MarketData,
 } from 'src/market/interfaces/kucoin.interface';
 import { AxiosError } from 'axios';
-import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
-import { WebSocket } from 'ws';
+import { WebsocketAbstract } from '../websocket.abstract';
 
 @Injectable()
-export class KucoinService {
-  public readonly kucoinWSResponseSubject = new Subject<
-    Map<string, MarketData>
-  >();
-  private readonly logger = new Logger(KucoinService.name);
-  private readonly ompfinexMarketMap = this.ompfinexService.ompfinexMarketsMap;
+export class KucoinService extends WebsocketAbstract {
+  protected readonly logger = new Logger(KucoinService.name);
   private readonly kucoinWsResponse = new Map<string, MarketData>();
-  private ws!: WebSocket;
+  readonly kucoinWsResponseSubject = new Subject<Map<string, MarketData>>();
 
-  constructor(
-    private readonly httpService: HttpService,
-    private readonly ompfinexService: OmpfinexService,
-  ) {}
+  constructor(private readonly httpService: HttpService) {
+    super();
+  }
 
-  async createConnection() {
-    try {
-      const publicBulletResponse = await this.getPublicBulletResponse();
-      const instanceServer = publicBulletResponse.instanceServers.reduce(
-        (previousValue) => previousValue,
-      );
-      const endpoint = `${instanceServer.endpoint}/?token=${publicBulletResponse.token}`;
-      this.connect(endpoint);
-      this.keepAlive(instanceServer.pingInterval);
-      this.handleMessage();
-      this.handleError();
-    } catch (e) {
-      this.logger.error('cannot connect to kucoin ws', e);
-    }
+  createConnection() {
+    this.getPublicBulletResponse()
+      .then((publicBulletResponse) => {
+        const instanceServer = publicBulletResponse.instanceServers.reduce(
+          (previousValue) => previousValue,
+        );
+        this.pingInterval = instanceServer.pingInterval;
+        const endpoint = `${instanceServer.endpoint}/?token=${publicBulletResponse.token}`;
+        this.connect(endpoint);
+      })
+      .catch((err) => {
+        this.logger.error(err);
+      });
   }
 
   private async getPublicBulletResponse() {
@@ -62,48 +55,29 @@ export class KucoinService {
     return data;
   }
 
-  private connect(endpoint: string) {
-    this.ws = new WebSocket(endpoint);
-    this.ws.on('open', () => {
-      this.logger.log('opening the kucoin ws');
-      this.subscribe('/market/snapshot:USDS');
-    });
+  protected handleMessages(data: KucoinWebsocketMessage): void {
+    switch (data.type) {
+      case 'welcome':
+        this.subscribe('/market/snapshot:USDS');
+        break;
+      case 'message':
+        const marketData = data.data.data;
+        this.kucoinWsResponse.set(marketData.baseCurrency, marketData);
+        this.kucoinWsResponseSubject.next(this.kucoinWsResponse);
+        break;
+      case 'pong':
+        this.ping();
+        break;
+    }
   }
 
-  private handleMessage() {
-    this.ws.on('message', (msg: KucoinWebsocketMessage) => {
-      if (msg.type === 'message') {
-        this.logger.log(msg.data.data);
-      }
-    });
-  }
-
-  private keepAlive(pingInterval: number) {
-    this.ws.on('message', (msg: KucoinWebsocketMessage) => {
-      if (msg.type === 'welcome') {
-        setInterval(() => {
-          this.sendMessage({ type: 'ping' });
-        }, pingInterval);
-      }
-    });
-  }
-
-  handleError() {
-    this.ws.on('error', (err) => {
-      this.logger.error('error happened in kucoin ws', err);
-    });
-  }
-
-  private sendMessage(msg: any) {
-    this.ws.send(msg);
-  }
-
-  private subscribe(topic: string) {
-    this.sendMessage({
-      type: 'subscribe',
-      topic,
-      privateChannel: false,
-      response: true,
-    });
+  protected ping(): void {
+    setInterval(() => {
+      const pingId = `ping-${Date.now()}`;
+      this.sendMessage({
+        id: pingId,
+        type: 'ping',
+      });
+    }, this.pingInterval);
   }
 }
