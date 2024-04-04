@@ -1,41 +1,45 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { endpoints } from 'src/market/environments/endpoints';
 import { HttpService } from '@nestjs/axios';
-import {
-  catchError,
-  firstValueFrom,
-  Subject,
-  takeWhile,
-  tap,
-  timer,
-} from 'rxjs';
+import { catchError, firstValueFrom, map, Subject } from 'rxjs';
 import {
   KucoinPublicBulletResponse,
   KucoinWebsocketMessage,
+  MarketData,
 } from 'src/market/interfaces/kucoin.interface';
 import { AxiosError } from 'axios';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
+import { WebSocket } from 'ws';
 
 @Injectable()
 export class KucoinService {
-  public readonly kucoinWSResponseSubject = new Subject();
+  public readonly kucoinWSResponseSubject = new Subject<
+    Map<string, MarketData>
+  >();
   private readonly logger = new Logger(KucoinService.name);
-  private webSocketSubject!: WebSocketSubject<any>;
   private readonly ompfinexMarketMap = this.ompfinexService.ompfinexMarketsMap;
+  private readonly kucoinWsResponse = new Map<string, MarketData>();
+  private ws!: WebSocket;
+
   constructor(
     private readonly httpService: HttpService,
     private readonly ompfinexService: OmpfinexService,
   ) {}
 
   async createConnection() {
-    const publicBulletResponse = await this.getPublicBulletResponse();
-    const instanceServer = publicBulletResponse.data.instanceServers.reduce(
-      (previousValue) => previousValue,
-    );
-    const endpoint = `${instanceServer.endpoint}${publicBulletResponse.data.token}`;
-    this.connect(endpoint);
-    this.keepAlive(instanceServer.pingInterval, instanceServer.pingTimeout);
+    try {
+      const publicBulletResponse = await this.getPublicBulletResponse();
+      const instanceServer = publicBulletResponse.instanceServers.reduce(
+        (previousValue) => previousValue,
+      );
+      const endpoint = `${instanceServer.endpoint}/?token=${publicBulletResponse.token}`;
+      this.connect(endpoint);
+      this.keepAlive(instanceServer.pingInterval);
+      this.handleMessage();
+      this.handleError();
+    } catch (e) {
+      this.logger.error('cannot connect to kucoin ws', e);
+    }
   }
 
   private async getPublicBulletResponse() {
@@ -46,6 +50,9 @@ export class KucoinService {
           null,
         )
         .pipe(
+          map((res) => {
+            return res.data;
+          }),
           catchError((error: AxiosError) => {
             this.logger.error(error.response.data);
             throw 'An error happened!';
@@ -55,63 +62,48 @@ export class KucoinService {
     return data;
   }
 
-  private keepAlive(pingInterval: number, pingTimeout?: number) {
-    timer(pingTimeout ?? 0, pingInterval)
-      .pipe(
-        takeWhile(() => !this.webSocketSubject.closed),
-        tap(() => this.sendMessage({ type: 'ping' })),
-      )
-      .subscribe();
-  }
-
   private connect(endpoint: string) {
-    if (!this.webSocketSubject || this.webSocketSubject.closed) {
-      this.webSocketSubject = webSocket({
-        url: endpoint,
-      });
-      this.onConnect();
-    }
-  }
-
-  private onConnect() {
-    this.webSocketSubject.subscribe({
-      next: (message) => this.handleMessages(message),
-      error: (err) => this.onError(err),
-      complete: () => this.onComplete(),
+    this.ws = new WebSocket(endpoint);
+    this.ws.on('open', () => {
+      this.logger.log('opening the kucoin ws');
+      this.subscribe('/market/snapshot:USDS');
     });
   }
 
-  private handleMessages(message: KucoinWebsocketMessage) {
-    if (message.type === 'welcome') {
-      this.sendMessage({
-        id: message.id,
-        type: 'subscribe',
-        topic: '/market/snapshot:USDS',
-        response: true,
-      });
-    }
-    if (message.type === 'message') {
-      if (this.ompfinexMarketMap.has(message.data.data.baseCurrency)) {
-        this.kucoinWSResponseSubject.next(message.data.data);
+  private handleMessage() {
+    this.ws.on('message', (msg: KucoinWebsocketMessage) => {
+      if (msg.type === 'message') {
+        this.logger.log(msg.data.data);
       }
-    }
+    });
   }
 
-  private onComplete() {
-    this.logger.log(
-      'in this moment the subscription to kucoin websocket ended!',
-    );
+  private keepAlive(pingInterval: number) {
+    this.ws.on('message', (msg: KucoinWebsocketMessage) => {
+      if (msg.type === 'welcome') {
+        setInterval(() => {
+          this.sendMessage({ type: 'ping' });
+        }, pingInterval);
+      }
+    });
   }
 
-  private onError(err: Error) {
-    this.logger.warn('in kucoin websocket error happened!', err);
+  handleError() {
+    this.ws.on('error', (err) => {
+      this.logger.error('error happened in kucoin ws', err);
+    });
   }
 
-  private sendMessage(message: any) {
-    this.webSocketSubject.next(message);
+  private sendMessage(msg: any) {
+    this.ws.send(msg);
   }
 
-  private disconnect() {
-    this.webSocketSubject.complete();
+  private subscribe(topic: string) {
+    this.sendMessage({
+      type: 'subscribe',
+      topic,
+      privateChannel: false,
+      response: true,
+    });
   }
 }

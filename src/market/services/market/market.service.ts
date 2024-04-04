@@ -3,6 +3,7 @@ import { KucoinService } from 'src/market/services/kucoin/kucoin.service';
 import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
 import { BinanceService } from 'src/market/services/binance/binance.service';
 import { combineLatest, map } from 'rxjs';
+import Big from 'big.js';
 
 @Injectable()
 export class MarketService {
@@ -36,6 +37,7 @@ export class MarketService {
     ]).pipe(
       map(([omp, kucoin, binance]) => {
         return omp.map((ompMarket) => {
+          const kucoinFound = kucoin.get(ompMarket.currencyId);
           return {
             currencyId: ompMarket.currencyId,
             currencyName: ompMarket.currencyName,
@@ -47,8 +49,21 @@ export class MarketService {
               price: ompMarket.price,
             },
             kucoin: {
-              volume: ompMarket.volume,
-              price: ompMarket.price,
+              timestamp: kucoinFound ? kucoinFound.datetime : null,
+              volume: kucoinFound ? kucoinFound.vol : null,
+              price: kucoinFound ? kucoinFound.lastTradedPrice : null,
+              diffPrice: kucoinFound
+                ? Big(kucoinFound.lastTradedPrice)
+                    .minus(ompMarket.price)
+                    .toNumber()
+                : null,
+              diffPricePercent: kucoinFound
+                ? Big(kucoinFound.lastTradedPrice)
+                    .minus(ompMarket.price)
+                    .div(kucoinFound.lastTradedPrice)
+                    .times(100)
+                    .toNumber()
+                : null,
             },
             binance: {
               volume: ompMarket.volume,

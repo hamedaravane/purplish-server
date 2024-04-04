@@ -17,9 +17,13 @@ export class BinanceService {
     this.ompfinexService.ompfinexMarketsMap.forEach((value: OmpfinexMarket) => {
       streamNames += `${value.baseCurrency.id.toLowerCase()}${value.quoteCurrency.id.toLowerCase()}/`;
     });
-    this.connect(
-      `${endpoints.binanceStreamBaseUrl}/stream?streams=${streamNames}`,
-    );
+    try {
+      this.connect(
+        `${endpoints.binanceStreamBaseUrl}/stream?streams=${streamNames}`,
+      );
+    } catch (e) {
+      this.logger.error('cannot connect to binance ws', e);
+    }
   }
 
   private connect(endpoint: string) {
@@ -38,6 +42,7 @@ export class BinanceService {
   }
 
   private handleMessages(message: any) {
+    this.logger.log(message);
     this.binanceWSResponseSubject.next(message);
   }
 
