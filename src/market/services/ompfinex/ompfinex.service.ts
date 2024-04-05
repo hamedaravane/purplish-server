@@ -40,6 +40,9 @@ export class OmpfinexService {
         )
         .pipe(
           map((res) => {
+            if (res.status === 200) {
+              this.logger.log('fetched markets successfully from omp');
+            }
             return res.data.data
               .map((market) => {
                 if (market.quote_currency.id !== 'USDT') {

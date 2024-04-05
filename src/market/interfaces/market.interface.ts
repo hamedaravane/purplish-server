@@ -1,20 +1,20 @@
-export interface Market {
-  id: number;
+interface MarketComparison {
   currencyId: string;
   currencyName: string;
   iconPath: string;
   name: string;
-  ompfinex: {
-    exchangeIcon: string;
-    timestamp: number;
-    volume: number;
-    price: number;
-  };
-  kucoin: {
-    exchangeIcon: string;
-    volume?: number;
-    price?: number;
-    diffPrice?: number;
-    diffPricePercent?: number;
-  };
+  ompfinex: MarketDetails;
+  binance: MarketDetailsWithDiff | null;
+  kucoin: MarketDetailsWithDiff | null;
+}
+
+interface MarketDetails {
+  timestamp: number;
+  volume: number;
+  price: number;
+}
+
+interface MarketDetailsWithDiff extends MarketDetails {
+  diffPrice: number;
+  diffPricePercent: number;
 }

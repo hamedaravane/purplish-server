@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { KucoinService } from 'src/market/services/kucoin/kucoin.service';
 import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
 import { BinanceService } from 'src/market/services/binance/binance.service';
-import { combineLatest, map } from 'rxjs';
+import { combineLatest, map, Observable, zip } from 'rxjs';
 import Big from 'big.js';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class MarketService {
   }
 
   combineMarkets() {
-    return combineLatest([
+    return zip([
       this.ompfinexService.ompfinexWsResponseSubject,
       this.kucoinService.kucoinWsResponseSubject,
       this.binanceService.binanceWsResponseSubject,
@@ -38,6 +38,7 @@ export class MarketService {
       map(([omp, kucoin, binance]) => {
         return omp.map((ompMarket) => {
           const kucoinFound = kucoin.get(ompMarket.currencyId);
+          const binanceFound = binance.get(ompMarket.currencyId);
           return {
             currencyId: ompMarket.currencyId,
             currencyName: ompMarket.currencyName,
@@ -45,31 +46,41 @@ export class MarketService {
             name: ompMarket.name,
             ompfinex: {
               timestamp: ompMarket.timestamp,
-              volume: ompMarket.volume,
-              price: ompMarket.price,
+              volume: Big(ompMarket.volume).toNumber(),
+              price: Big(ompMarket.price).toNumber(),
             },
-            kucoin: {
-              timestamp: kucoinFound ? kucoinFound.datetime : null,
-              volume: kucoinFound ? kucoinFound.vol : null,
-              price: kucoinFound ? kucoinFound.lastTradedPrice : null,
-              diffPrice: kucoinFound
-                ? Big(kucoinFound.lastTradedPrice)
+            binance: binanceFound
+              ? {
+                  timestamp: binanceFound.time,
+                  volume: binanceFound.quantity,
+                  price: binanceFound.price,
+                  diffPrice: Big(binanceFound.price)
                     .minus(ompMarket.price)
-                    .toNumber()
-                : null,
-              diffPricePercent: kucoinFound
-                ? Big(kucoinFound.lastTradedPrice)
+                    .toNumber(),
+                  diffPricePercent: Big(binanceFound.price)
+                    .minus(ompMarket.price)
+                    .div(binanceFound.price)
+                    .times(100)
+                    .toNumber(),
+                }
+              : null,
+            kucoin: kucoinFound
+              ? {
+                  timestamp: kucoinFound.datetime,
+                  volume: kucoinFound.vol,
+                  price: kucoinFound.lastTradedPrice,
+                  diffPrice: Big(kucoinFound.lastTradedPrice)
+                    .minus(ompMarket.price)
+                    .toNumber(),
+                  diffPricePercent: Big(kucoinFound.lastTradedPrice)
                     .minus(ompMarket.price)
                     .div(kucoinFound.lastTradedPrice)
                     .times(100)
-                    .toNumber()
-                : null,
-            },
-            binance: {
-              volume: ompMarket.volume,
-              price: ompMarket.price,
-            },
-          };
+                    .toNumber(),
+                }
+              : null,
+          } as MarketComparison;
+          // return binanceFound;
         });
       }),
     );

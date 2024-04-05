@@ -1,34 +1,61 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { endpoints } from 'src/market/environments/endpoints';
 import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
-import { OmpfinexMarket } from 'src/market/interfaces/ompfinex.interface';
 import { Subject } from 'rxjs';
-import { WebsocketAbstract } from '../websocket.abstract';
+import { WebsocketClient } from 'binance';
+import { SocksProxyAgent } from 'socks-proxy-agent';
+import { WsMessageAggTradeFormatted } from 'binance/lib/types/websockets';
 
 @Injectable()
-export class BinanceService extends WebsocketAbstract {
+export class BinanceService {
   protected readonly logger = new Logger(BinanceService.name);
-  public readonly binanceWsResponseSubject = new Subject();
+  private client: WebsocketClient;
+  private readonly binanceWsResponseMap = new Map<
+    string,
+    WsMessageAggTradeFormatted
+  >();
+  public readonly binanceWsResponseSubject = new Subject<
+    Map<string, WsMessageAggTradeFormatted>
+  >();
 
-  constructor(private readonly ompfinexService: OmpfinexService) {
-    super();
-  }
+  constructor(private readonly ompfinexService: OmpfinexService) {}
 
   createConnection(): void {
-    let streamNames = '';
-    this.ompfinexService.ompfinexMarketsMap.forEach((value: OmpfinexMarket) => {
-      streamNames += `${value.baseCurrency.id.toLowerCase()}${value.quoteCurrency.id.toLowerCase()}/`;
+    const proxy = 'socks://127.0.0.1:2334';
+    const agent = new SocksProxyAgent(proxy);
+
+    this.client = new WebsocketClient({
+      beautify: true,
+      wsOptions: {
+        agent,
+      },
     });
-    const endpoint = `${endpoints.binanceStreamBaseUrl}?streams=${streamNames}`;
-    this.connect(endpoint);
+    this.subscription();
+    this.handleMessages();
   }
 
-  protected handleMessages(data: any): void {
-    this.logger.log(data);
-    this.binanceWsResponseSubject.next(data);
+  private handleMessages(): void {
+    this.client.on('formattedMessage', (data: WsMessageAggTradeFormatted) => {
+      this.binanceWsResponseMap.set(
+        this.extractBaseCurrency(data.symbol),
+        data,
+      );
+      this.binanceWsResponseSubject.next(this.binanceWsResponseMap);
+    });
   }
 
-  protected ping(): void {
-    throw new Error('Method not implemented.');
+  private subscription(): void {
+    for (const value of this.ompfinexService.ompfinexMarketsMap.values()) {
+      const symbol = `${value.baseCurrency.id}${value.quoteCurrency.id}`;
+      this.client.subscribeSpotAggregateTrades(symbol, true);
+    }
+  }
+
+  private extractBaseCurrency(symbol: string): string {
+    const quoteCurrency = 'USDT';
+    if (symbol.endsWith(quoteCurrency)) {
+      return symbol.substring(0, symbol.length - quoteCurrency.length);
+    } else {
+      throw new Error('Symbol does not contain the expected quote currency.');
+    }
   }
 }

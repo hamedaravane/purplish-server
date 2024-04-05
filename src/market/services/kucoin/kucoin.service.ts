@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { endpoints } from 'src/market/environments/endpoints';
-import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom, map, Subject } from 'rxjs';
 import {
   KucoinPublicBulletResponse,
@@ -9,6 +8,7 @@ import {
 } from 'src/market/interfaces/kucoin.interface';
 import { AxiosError } from 'axios';
 import { WebsocketAbstract } from '../websocket.abstract';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class KucoinService extends WebsocketAbstract {
@@ -16,8 +16,8 @@ export class KucoinService extends WebsocketAbstract {
   private readonly kucoinWsResponse = new Map<string, MarketData>();
   readonly kucoinWsResponseSubject = new Subject<Map<string, MarketData>>();
 
-  constructor(private readonly httpService: HttpService) {
-    super();
+  constructor(protected httpService: HttpService) {
+    super(httpService);
   }
 
   createConnection() {
@@ -27,7 +27,7 @@ export class KucoinService extends WebsocketAbstract {
           (previousValue) => previousValue,
         );
         this.pingInterval = instanceServer.pingInterval;
-        const endpoint = `${instanceServer.endpoint}/?token=${publicBulletResponse.token}`;
+        const endpoint = `${instanceServer.endpoint}?token=${publicBulletResponse.token}`;
         this.connect(endpoint);
       })
       .catch((err) => {
