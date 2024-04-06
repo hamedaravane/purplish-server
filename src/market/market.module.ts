@@ -10,5 +10,6 @@ import { MarketService } from './services/market/market.service';
   imports: [HttpModule],
   providers: [KucoinService, OmpfinexService, BinanceService, MarketService],
   controllers: [MarketController],
+  exports: [MarketService],
 })
 export class MarketModule {}

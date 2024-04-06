@@ -15,6 +15,11 @@ interface MarketDetails {
 }
 
 interface MarketDetailsWithDiff extends MarketDetails {
+  exchange: {
+    name: string;
+    logo: string;
+    ranking: number;
+  };
   diffPrice: number;
   diffPricePercent: number;
 }

@@ -44,6 +44,10 @@ export class KucoinService extends WebsocketAbstract {
         )
         .pipe(
           map((res) => {
+            this.logger.log(
+              'public token fetched successfully',
+              res.data.data.token,
+            );
             return res.data;
           }),
           catchError((error: AxiosError) => {
@@ -58,6 +62,7 @@ export class KucoinService extends WebsocketAbstract {
   protected handleMessages(data: KucoinWebsocketMessage): void {
     switch (data.type) {
       case 'welcome':
+        this.logger.log('connected to websocket');
         this.subscribe('/market/snapshot:USDS');
         break;
       case 'message':
