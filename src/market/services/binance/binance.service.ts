@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { WebsocketClient } from 'binance';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { WsMessageAggTradeFormatted } from 'binance/lib/types/websockets';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class BinanceService {
@@ -17,11 +18,15 @@ export class BinanceService {
     Map<string, WsMessageAggTradeFormatted>
   >();
 
-  constructor(private readonly ompfinexService: OmpfinexService) {}
+  constructor(
+    private readonly ompfinexService: OmpfinexService,
+    private readonly configService: ConfigService,
+  ) {}
 
   createConnection(): void {
-    const proxy = 'socks://mhd-proxy.omp.net:1080';
-    const agent = new SocksProxyAgent(proxy);
+    const proxyHost = this.configService.get('PROXY_SOCKS5_HOST');
+    const proxyPort = this.configService.get('PROXY_SOCKS5_PORT');
+    const agent = new SocksProxyAgent(`${proxyHost}:${proxyPort}`);
 
     this.client = new WebsocketClient({
       beautify: true,

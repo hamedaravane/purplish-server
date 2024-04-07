@@ -9,6 +9,7 @@ import { SharedModule } from './shared/shared.module';
 import { ConfigModule } from '@nestjs/config';
 import { TelegramModule } from './telegram/telegram.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
@@ -17,7 +18,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     AuthModule,
     TradingModule,
     SharedModule,
-    ConfigModule.forRoot(),
     TelegramModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
@@ -29,8 +29,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       entities: [],
       synchronize: true,
       autoLoadEntities: true,
-      logging: 'all',
-      logger: 'debug',
     }),
     ConfigModule.forRoot({
       envFilePath: [
@@ -39,6 +37,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         '.env.production',
       ],
       isGlobal: true,
+      load: [configuration],
     }),
   ],
   controllers: [AppController],

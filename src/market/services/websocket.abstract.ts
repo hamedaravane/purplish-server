@@ -4,6 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom } from 'rxjs';
 import { WebSocket } from 'isomorphic-ws';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import { ConfigService } from '@nestjs/config';
 
 export abstract class WebsocketAbstract {
   protected abstract logger: Logger;
@@ -11,7 +12,10 @@ export abstract class WebsocketAbstract {
   protected pingTimeout: number;
   protected client: WebSocket;
 
-  protected constructor(protected readonly httpService: HttpService) {}
+  protected constructor(
+    protected readonly httpService: HttpService,
+    protected readonly configService: ConfigService,
+  ) {}
 
   protected abstract createConnection(): void;
 
@@ -23,8 +27,9 @@ export abstract class WebsocketAbstract {
   }
 
   protected connectThroughProxy(endpoint: string) {
-    const proxy = 'socks://mhd-proxy.omp.net:1080';
-    const agent = new SocksProxyAgent(proxy);
+    const proxyHost = this.configService.get('PROXY_SOCKS5_HOST');
+    const proxyPort = this.configService.get('PROXY_SOCKS5_PORT');
+    const agent = new SocksProxyAgent(`${proxyHost}:${proxyPort}`);
     this.client = new WebSocket(endpoint, { agent });
     this.onConnect();
     this.handleError();

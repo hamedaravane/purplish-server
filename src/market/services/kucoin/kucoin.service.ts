@@ -9,6 +9,7 @@ import {
 import { AxiosError } from 'axios';
 import { WebsocketAbstract } from '../websocket.abstract';
 import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class KucoinService extends WebsocketAbstract {
@@ -16,8 +17,11 @@ export class KucoinService extends WebsocketAbstract {
   private readonly kucoinWsResponse = new Map<string, MarketData>();
   readonly kucoinWsResponseSubject = new Subject<Map<string, MarketData>>();
 
-  constructor(protected httpService: HttpService) {
-    super(httpService);
+  constructor(
+    protected httpService: HttpService,
+    protected configService: ConfigService,
+  ) {
+    super(httpService, configService);
   }
 
   createConnection() {

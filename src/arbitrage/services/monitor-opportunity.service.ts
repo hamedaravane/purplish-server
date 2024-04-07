@@ -3,13 +3,12 @@ import { CurrencyArbitrage } from '../entity/currency-arbitrage.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ArbitrageService } from './arbitrage.service';
-import { firstValueFrom, Subject, takeUntil } from 'rxjs';
+import { firstValueFrom, takeWhile } from 'rxjs';
 import { MarketService } from 'src/market/services/market/market.service';
 import Big from 'big.js';
 
 @Injectable()
 export class MonitorOpportunityService {
-  private readonly readyToSnapshot = new Subject<boolean>();
   constructor(
     @InjectRepository(CurrencyArbitrage)
     private currencyArbitrageRepository: Repository<CurrencyArbitrage>,
@@ -22,26 +21,27 @@ export class MonitorOpportunityService {
   readyToSnapShotOpportunities() {
     this.arbitrageService.filteredMarketsSubject
       .asObservable()
-      .pipe(takeUntil(this.readyToSnapshot.asObservable()))
-      .subscribe((data) => {
-        this.readyToSnapshot.next(data.length > 1);
-        this.snapShotOpportunities();
+      .pipe(takeWhile((arr) => arr.length >= 1))
+      .subscribe(async (arr) => {
+        if (arr.length >= 1) {
+          await this.snapShotOpportunities();
+        }
       });
   }
 
-  snapShotOpportunities() {
-    firstValueFrom(this.arbitrageService.filteredMarketsSubject.asObservable())
-      .then((opportunities) => {
-        const currencyArbitrages = opportunities.map((opportunity) => ({
-          ...opportunity,
-          actionTimestamp: new Date(),
-          isTouchedTarget: false,
-          targetTouchTimestamp: null,
-        }));
-        return this.currencyArbitrageRepository.save(currencyArbitrages);
-      })
-      .then(() => this.monitorOmpfinexData())
-      .catch((error) => console.error(error));
+  async snapShotOpportunities() {
+    const opportunities = await firstValueFrom(
+      this.arbitrageService.filteredMarketsSubject.asObservable(),
+    );
+    opportunities.map(async (opportunity) => {
+      const data = {
+        ...opportunity,
+        actionTimestamp: new Date(),
+        isTouchedTarget: false,
+        targetTouchTimestamp: null,
+      };
+      await this.currencyArbitrageRepository.save(data);
+    });
   }
 
   async updateOpportunityWhenTargetReached(
