@@ -16,33 +16,31 @@ import { AxiosError } from 'axios';
 
 @Injectable()
 export class OmpfinexService {
-  public readonly ompfinexWsResponseSubject = new Subject<
-    OmpfinexMarketWebsocket[]
-  >();
-  public readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
   private readonly logger = new Logger(OmpfinexService.name);
   private readonly client = new Centrifuge(endpoints.ompfinexStreamBaseUrl, {
     websocket: WebSocket,
   });
+  public readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
+  public readonly ompfinexWsResponseSubject = new Subject<
+    OmpfinexMarketWebsocket[]
+  >();
 
   constructor(private readonly httpService: HttpService) {}
 
   public async getOmpfinexMarkets() {
+    const agent = { 'User-Agent': 'Node' };
     const markets = await firstValueFrom(
       this.httpService
         .get<OmpfinexDataResponse<OmpfinexMarketDto[]>>(
           `${endpoints.ompfinexApiBaseUrl}/v1/market`,
           {
             headers: {
-              'User-Agent': 'Node.js/v20.11.1',
+              ...agent,
             },
           },
         )
         .pipe(
           map((res) => {
-            if (res.status === 200) {
-              this.logger.log('fetched markets successfully from omp');
-            }
             return res.data.data
               .map((market) => {
                 if (market.quote_currency.id !== 'USDT') {

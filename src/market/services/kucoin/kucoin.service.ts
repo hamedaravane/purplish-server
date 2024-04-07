@@ -28,7 +28,7 @@ export class KucoinService extends WebsocketAbstract {
         );
         this.pingInterval = instanceServer.pingInterval;
         const endpoint = `${instanceServer.endpoint}?token=${publicBulletResponse.token}`;
-        this.connect(endpoint);
+        this.connectThroughProxy(endpoint);
       })
       .catch((err) => {
         this.logger.error(err);
@@ -44,10 +44,6 @@ export class KucoinService extends WebsocketAbstract {
         )
         .pipe(
           map((res) => {
-            this.logger.log(
-              'public token fetched successfully',
-              res.data.data.token,
-            );
             return res.data;
           }),
           catchError((error: AxiosError) => {
@@ -64,6 +60,7 @@ export class KucoinService extends WebsocketAbstract {
       case 'welcome':
         this.logger.log('connected to websocket');
         this.subscribe('/market/snapshot:USDS');
+        this.ping();
         break;
       case 'message':
         const marketData = data.data.data;
@@ -71,16 +68,13 @@ export class KucoinService extends WebsocketAbstract {
         this.kucoinWsResponseSubject.next(this.kucoinWsResponse);
         break;
       case 'pong':
-        this.ping();
         break;
     }
   }
 
   protected ping(): void {
     setInterval(() => {
-      const pingId = `ping-${Date.now()}`;
       this.sendMessage({
-        id: pingId,
         type: 'ping',
       });
     }, this.pingInterval);

@@ -6,8 +6,6 @@ export class ArbitrageController {
   private readonly logger = new Logger(ArbitrageController.name);
   constructor(private readonly arbitrageService: ArbitrageService) {
     this.arbitrageService.findOpportunity();
-    this.arbitrageService.filteredMarketsSubject.subscribe((value) =>
-      this.logger.log(value),
-    );
+    this.arbitrageService.filteredMarketsSubject.subscribe();
   }
 }

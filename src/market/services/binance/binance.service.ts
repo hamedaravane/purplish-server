@@ -20,7 +20,7 @@ export class BinanceService {
   constructor(private readonly ompfinexService: OmpfinexService) {}
 
   createConnection(): void {
-    const proxy = 'socks://127.0.0.1:2334';
+    const proxy = 'socks://mhd-proxy.omp.net:1080';
     const agent = new SocksProxyAgent(proxy);
 
     this.client = new WebsocketClient({

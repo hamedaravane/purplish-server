@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { endpoints } from '../../market/environments/endpoints';
-import { firstValueFrom, map, Subject, tap } from 'rxjs';
+import { firstValueFrom, map, Subject } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import {
   CurrencyArbitrageData,
@@ -13,11 +13,11 @@ import Big from 'big.js';
 
 @Injectable()
 export class ArbitrageService {
-  private readonly logger = new Logger(ArbitrageService.name);
   constructor(
     private readonly httpService: HttpService,
     private readonly marketService: MarketService,
   ) {}
+  private readonly logger = new Logger(ArbitrageService.name);
   private readonly ompfinexTransactionFeeSubject = new Subject<number>();
   private ompfinexTransactionFee = 0.0035;
   private readonly marketsSubject = this.marketService.marketComparisonSubject;

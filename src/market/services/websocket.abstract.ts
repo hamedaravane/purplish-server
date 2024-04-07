@@ -3,7 +3,7 @@ import { endpoints } from '../environments/endpoints';
 import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom } from 'rxjs';
 import { WebSocket } from 'isomorphic-ws';
-import * as https from 'https';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 
 export abstract class WebsocketAbstract {
   protected abstract logger: Logger;
@@ -23,18 +23,12 @@ export abstract class WebsocketAbstract {
   }
 
   protected connectThroughProxy(endpoint: string) {
-    try {
-      // const agent = new https.Agent({
-      //   host: 'free.shecan.ir',
-      //   keepAlive: true,
-      // });
-      this.client = new WebSocket(endpoint);
-      this.onConnect();
-      this.handleError();
-      this.onClose();
-    } catch (e) {
-      this.logger.error(e);
-    }
+    const proxy = 'socks://mhd-proxy.omp.net:1080';
+    const agent = new SocksProxyAgent(proxy);
+    this.client = new WebSocket(endpoint, { agent });
+    this.onConnect();
+    this.handleError();
+    this.onClose();
   }
 
   private getProxyList() {
