@@ -19,7 +19,7 @@ export class ArbitrageService {
   ) {}
   private readonly logger = new Logger(ArbitrageService.name);
   private readonly ompfinexTransactionFeeSubject = new Subject<number>();
-  private ompfinexTransactionFee = 0.0035;
+  private ompfinexTransactionFee = 0.35;
   private readonly marketsSubject = this.marketService.marketComparisonSubject;
   public readonly filteredMarketsSubject = new Subject<
     CurrencyArbitrageData[]
