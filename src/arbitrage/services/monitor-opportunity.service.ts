@@ -3,12 +3,14 @@ import { CurrencyArbitrage } from '../entity/currency-arbitrage.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ArbitrageService } from './arbitrage.service';
-import { firstValueFrom, takeWhile } from 'rxjs';
+import { firstValueFrom, interval, Subject, takeUntil, throttle } from 'rxjs';
 import { MarketService } from 'src/market/services/market/market.service';
 import Big from 'big.js';
 
 @Injectable()
 export class MonitorOpportunityService {
+  arbitrageActionsSnapShot = new Map<string, any>();
+  pauseSub = new Subject<void>();
   constructor(
     @InjectRepository(CurrencyArbitrage)
     private currencyArbitrageRepository: Repository<CurrencyArbitrage>,
@@ -21,9 +23,10 @@ export class MonitorOpportunityService {
   readyToSnapShotOpportunities() {
     this.arbitrageService.filteredMarketsSubject
       .asObservable()
-      .pipe(takeWhile((arr) => arr.length >= 1))
+      .pipe(takeUntil(this.pauseSub.asObservable()))
       .subscribe(async (arr) => {
-        if (arr.length >= 1) {
+        if (arr.length > 0) {
+          this.pauseSub.next();
           await this.snapShotOpportunities();
         }
       });
@@ -33,48 +36,70 @@ export class MonitorOpportunityService {
     const opportunities = await firstValueFrom(
       this.arbitrageService.filteredMarketsSubject.asObservable(),
     );
-    opportunities.map(async (opportunity) => {
-      const data = {
+    const arbitrage = opportunities.map((opportunity) => {
+      const addedItem = {
         ...opportunity,
         actionTimestamp: new Date(),
         isTouchedTarget: false,
         targetTouchTimestamp: null,
+        currentPrice: opportunity.actionPrice,
       };
-      await this.currencyArbitrageRepository.save(data);
+      this.arbitrageActionsSnapShot.set(addedItem.currencyId, addedItem);
+      return addedItem;
     });
+    await this.currencyArbitrageRepository.save(arbitrage);
+    await this.monitorOmpfinexData();
   }
 
   async updateOpportunityWhenTargetReached(
     currencyId: string,
     currentPrice: number,
   ) {
-    const opportunities = await this.currencyArbitrageRepository.find({
-      where: {
-        currencyId,
-        isTouchedTarget: false,
-      },
-    });
-
-    for (const opportunity of opportunities) {
-      if (currentPrice >= opportunity.targetPrice) {
-        opportunity.isTouchedTarget = true;
-        opportunity.targetTouchTimestamp = new Date();
-        await this.currencyArbitrageRepository.save(opportunity);
+    if (this.arbitrageActionsSnapShot.size > 0) {
+      const arbitrageActions = this.arbitrageActionsSnapShot.get(currencyId);
+      if (arbitrageActions?.targetPrice > arbitrageActions?.actionPrice) {
+        if (currentPrice > arbitrageActions?.targetPrice) {
+          await this.currencyArbitrageRepository.update(
+            { currencyId },
+            {
+              isTouchedTarget: true,
+              targetTouchTimestamp: new Date(),
+              currentPrice: currentPrice,
+            },
+          );
+          this.arbitrageActionsSnapShot.delete(currencyId);
+        }
+      }
+      if (arbitrageActions?.targetPrice < arbitrageActions?.actionPrice) {
+        if (currentPrice < arbitrageActions?.targetPrice) {
+          await this.currencyArbitrageRepository.update(
+            { currencyId },
+            {
+              isTouchedTarget: true,
+              targetTouchTimestamp: new Date(),
+              currentPrice: currentPrice,
+            },
+          );
+          this.arbitrageActionsSnapShot.delete(currencyId);
+        }
       }
     }
   }
 
   async monitorOmpfinexData() {
-    this.marketService.marketComparisonSubject.asObservable().subscribe({
-      next: (ompfinexMarketWebsocket) => {
-        ompfinexMarketWebsocket.map(async (market) => {
-          await this.updateOpportunityWhenTargetReached(
-            market.currencyId,
-            Big(market.ompfinex.price).toNumber(),
-          );
-        });
-      },
-      error: (error) => console.error(error),
-    });
+    this.marketService.marketComparisonSubject
+      .asObservable()
+      .pipe(throttle(() => interval(1500)))
+      .subscribe({
+        next: (ompfinexMarketWebsocket) => {
+          ompfinexMarketWebsocket.map(async (market) => {
+            await this.updateOpportunityWhenTargetReached(
+              market.currencyId,
+              Big(market.ompfinex.price).toNumbr(),
+            );
+          });
+        },
+        error: (error) => console.error(eror),
+      });
   }
 }

@@ -16,18 +16,12 @@ export class MarketService {
     private readonly binanceService: BinanceService,
   ) {}
 
-  exchangesConnect() {
-    this.ompfinexService
-      .getOmpfinexMarkets()
-      .then(() => {
-        this.ompfinexService.createConnection();
-        this.ompfinexService.createSubscription();
-        this.binanceService.createConnection();
-        this.kucoinService.createConnection();
-      })
-      .catch((reason) => {
-        this.logger.error(reason);
-      });
+  async connectToExchanges() {
+    await this.ompfinexService.getOmpfinexMarkets();
+    this.ompfinexService.createConnection();
+    this.ompfinexService.createSubscription();
+    this.binanceService.createConnection();
+    await this.kucoinService.createConnection();
   }
 
   combineMarkets() {

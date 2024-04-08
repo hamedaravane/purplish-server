@@ -10,6 +10,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TelegramModule } from './telegram/telegram.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseConfigService } from 'src/config/database-config.service';
+import { DatabaseConfigModule } from 'src/config/database-config.module';
 import configuration from './config/configuration';
 import * as process from 'process';
 
@@ -21,6 +22,7 @@ import * as process from 'process';
     TradingModule,
     SharedModule,
     TelegramModule,
+    DatabaseConfigModule,
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
     }),
@@ -31,6 +33,6 @@ import * as process from 'process';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, DatabaseConfigService],
+  providers: [AppService],
 })
 export class AppModule {}

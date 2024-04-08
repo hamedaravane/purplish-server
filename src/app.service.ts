@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { MarketService } from 'src/market/services/market/market.service';
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
+  constructor(private readonly marketService: MarketService) {
+    this.initMarkets().then();
+  }
+
+  async initMarkets() {
+    await this.marketService.connectToExchanges();
+    this.marketService.combineMarkets();
   }
 }

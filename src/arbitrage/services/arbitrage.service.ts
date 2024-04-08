@@ -27,24 +27,21 @@ export class ArbitrageService {
   public ompfinexTransactionFee$ =
     this.ompfinexTransactionFeeSubject.asObservable();
 
-  private getOmpfinexUserData() {
-    firstValueFrom(
-      this.httpService
-        .get<
-          AxiosResponse<OmpfinexApiResponse<UserData>>
-        >(`${endpoints.ompfinexApiBaseUrl}/v1/user`)
-        .pipe(map((res) => res.data.data.data)),
-    )
-      .then((userData) => {
-        this.ompfinexTransactionFee = userData.transaction_fee;
-        this.ompfinexTransactionFeeSubject.next(userData.transaction_fee);
-      })
-      .catch((err) => {
-        this.logger.error(err);
-      })
-      .finally(() => {
-        this.ompfinexTransactionFeeSubject.next(0.35);
-      });
+  private async getOmpfinexUserData() {
+    try {
+      const userData = await firstValueFrom(
+        this.httpService
+          .get<
+            AxiosResponse<OmpfinexApiResponse<UserData>>
+          >(`${endpoints.ompfinexApiBaseUrl}/v1/user`)
+          .pipe(map((res) => res.data.data.data)),
+      );
+      this.ompfinexTransactionFee = userData.transaction_fee;
+      this.ompfinexTransactionFeeSubject.next(userData.transaction_fee);
+    } catch (e) {
+      this.logger.error(e);
+      this.ompfinexTransactionFeeSubject.next(0.35);
+    }
   }
 
   public findOpportunity() {

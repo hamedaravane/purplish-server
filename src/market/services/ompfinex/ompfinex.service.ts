@@ -27,7 +27,7 @@ export class OmpfinexService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  public async getOmpfinexMarkets() {
+  async getOmpfinexMarkets() {
     const agent = { 'User-Agent': 'Node' };
     const markets = await firstValueFrom(
       this.httpService

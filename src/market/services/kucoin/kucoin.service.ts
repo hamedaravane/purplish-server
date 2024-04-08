@@ -24,19 +24,12 @@ export class KucoinService extends WebsocketAbstract {
     super(httpService, configService);
   }
 
-  createConnection() {
-    this.getPublicBulletResponse()
-      .then((publicBulletResponse) => {
-        const instanceServer = publicBulletResponse.instanceServers.reduce(
-          (previousValue) => previousValue,
-        );
-        this.pingInterval = instanceServer.pingInterval;
-        const endpoint = `${instanceServer.endpoint}?token=${publicBulletResponse.token}`;
-        this.connectThroughProxy(endpoint);
-      })
-      .catch((err) => {
-        this.logger.error(err);
-      });
+  async createConnection() {
+    const publicBulletResponse = await this.getPublicBulletResponse();
+    const instanceServer = publicBulletResponse.instanceServers[0];
+    this.pingInterval = instanceServer.pingInterval;
+    const endpoint = `${instanceServer.endpoint}?token=${publicBulletResponse.token}`;
+    this.connectThroughProxy(endpoint);
   }
 
   private async getPublicBulletResponse() {
