@@ -95,11 +95,11 @@ export class MonitorOpportunityService {
           ompfinexMarketWebsocket.map(async (market) => {
             await this.updateOpportunityWhenTargetReached(
               market.currencyId,
-              Big(market.ompfinex.price).toNumbr(),
+              Big(market.ompfinex.price).toNumber(),
             );
           });
         },
-        error: (error) => console.error(eror),
+        error: (error) => console.error(error),
       });
   }
 }

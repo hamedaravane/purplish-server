@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class CurrencyArbitrage {
@@ -23,7 +23,7 @@ export class CurrencyArbitrage {
   })
   diffPercentage: number;
 
-  @Column"decimal"', {
+  @Column('decimal', {
     precision: 8,
     scale: 2,
   })
@@ -32,21 +32,21 @@ export class CurrencyArbitrage {
   @Column('timestamp')
   actionTimestamp: Date;
 
-  @Column("decimal", {
+  @Column('decimal', {
     precision: 30,
-    scale: 15
+    scale: 15,
   })
   targetPrice: number;
 
-  @Column("decimal", {
+  @Column('decimal', {
     precision: 30,
-    scale: 15
+    scale: 15,
   })
   actionPrice: number;
 
-  @Column("decimal", {
+  @Column('decimal', {
     precision: 30,
-    scale: 15
+    scale: 15,
   })
   currentPrice: number;
 
