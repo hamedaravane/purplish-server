@@ -35,27 +35,31 @@ export interface OmpfinexMarket {
     name: string;
   };
   name: string;
+  minPrice: number;
+  maxPrice: number;
+  lastPrice: number;
 }
 
 export function convertToOmpfinexMarketDomain(
-  data: OmpfinexMarketDto[],
-): OmpfinexMarket[] {
-  return data.map((market) => {
-    return {
-      id: market.id,
-      baseCurrency: {
-        id: market.base_currency.id,
-        iconPath: market.base_currency.icon_path,
-        name: market.base_currency.name,
-      },
-      quoteCurrency: {
-        id: market.quote_currency.id,
-        iconPath: market.quote_currency.icon_path,
-        name: market.quote_currency.name,
-      },
-      name: market.name,
-    };
-  });
+  dto: OmpfinexMarketDto,
+): OmpfinexMarket {
+  return {
+    id: dto.id,
+    baseCurrency: {
+      id: dto.base_currency.id,
+      iconPath: dto.base_currency.icon_path,
+      name: dto.base_currency.name,
+    },
+    quoteCurrency: {
+      id: dto.quote_currency.id,
+      iconPath: dto.quote_currency.icon_path,
+      name: dto.quote_currency.name,
+    },
+    name: dto.name,
+    minPrice: dto.min_price,
+    maxPrice: dto.max_price,
+    lastPrice: dto.last_price,
+  };
 }
 
 export interface OmpfinexMarketWebsocketDto {
@@ -74,23 +78,27 @@ export interface OmpfinexMarketWebsocket {
   timestamp: number;
   volume: string;
   price: string;
+  minPrice: number;
+  maxPrice: number;
 }
 
 export function convertOmpfinexWsResponse(
-  ws: OmpfinexMarketWebsocketDto,
+  dto: OmpfinexMarketWebsocketDto,
   marketMap: Map<string, OmpfinexMarket>,
 ): OmpfinexMarketWebsocket {
   const foundMarket = Array.from(marketMap, ([, value]) => value).find(
-    (market) => ws.m === market.id,
+    (market) => dto.m === market.id,
   );
   return {
-    id: ws.m,
+    id: dto.m,
     currencyId: foundMarket?.baseCurrency.id,
     currencyName: foundMarket?.baseCurrency.name,
     iconPath: foundMarket?.baseCurrency.iconPath,
     name: foundMarket?.name,
-    timestamp: ws.t,
-    volume: ws.v,
-    price: ws.price,
+    timestamp: dto.t,
+    volume: dto.v,
+    price: dto.price,
+    minPrice: foundMarket?.minPrice,
+    maxPrice: foundMarket?.maxPrice,
   };
 }

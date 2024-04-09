@@ -1,17 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Centrifuge } from 'centrifuge';
-import { endpoints } from 'src/market/environments/endpoints';
-import { catchError, firstValueFrom, map, Subject } from 'rxjs';
-import { HttpService } from '@nestjs/axios';
+import { endpoints } from '@market/environments/endpoints';
 import {
   convertOmpfinexWsResponse,
+  convertToOmpfinexMarketDomain,
   OmpfinexDataResponse,
   OmpfinexMarket,
   OmpfinexMarketDto,
   OmpfinexMarketWebsocket,
   OmpfinexMarketWebsocketDto,
-} from 'src/market/interfaces/ompfinex.interface';
-import { WebSocket } from 'ws';
+} from '@market/interfaces/ompfinex.interface';
+import {
+  asapScheduler,
+  catchError,
+  distinct,
+  firstValueFrom,
+  map,
+  Observable,
+  scheduled,
+  share,
+} from 'rxjs';
+import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 
 @Injectable()
@@ -21,9 +30,9 @@ export class OmpfinexService {
     websocket: WebSocket,
   });
   public readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
-  public readonly ompfinexWsResponseSubject = new Subject<
-    OmpfinexMarketWebsocket[]
-  >();
+  private ompfinexMarketWs$ = new Observable<OmpfinexMarketWebsocket>();
+  public readonly ompfinexMarketWebsocket$: Observable<OmpfinexMarketWebsocket> =
+    this.ompfinexMarketWs$;
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -46,20 +55,7 @@ export class OmpfinexService {
                 if (market.quote_currency.id !== 'USDT') {
                   return null;
                 }
-                return {
-                  id: market.id,
-                  baseCurrency: {
-                    id: market.base_currency.id,
-                    iconPath: market.base_currency.icon_path,
-                    name: market.base_currency.name,
-                  },
-                  quoteCurrency: {
-                    id: market.quote_currency.id,
-                    iconPath: market.quote_currency.icon_path,
-                    name: market.quote_currency.name,
-                  },
-                  name: market.name,
-                } as OmpfinexMarket;
+                return convertToOmpfinexMarketDomain(market);
               })
               .filter((market) => !!market);
           }),
@@ -96,12 +92,12 @@ export class OmpfinexService {
     });
     sub.on('publication', (ctx) => {
       const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
-      this.ompfinexWsResponseSubject.next(
-        ws.data.map<OmpfinexMarketWebsocket>(
-          (market: OmpfinexMarketWebsocketDto): OmpfinexMarketWebsocket => {
-            return convertOmpfinexWsResponse(market, this.ompfinexMarketsMap);
-          },
-        ),
+      this.ompfinexMarketWs$ = scheduled(ws.data, asapScheduler).pipe(
+        map<OmpfinexMarketWebsocketDto, OmpfinexMarketWebsocket>((data) => {
+          return convertOmpfinexWsResponse(data, this.ompfinexMarketsMap);
+        }),
+        distinct(({ price, volume }) => ({ price, volume })),
+        share(),
       );
     });
     sub.subscribe();

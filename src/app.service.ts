@@ -9,6 +9,5 @@ export class AppService {
 
   async initMarkets() {
     await this.marketService.connectToExchanges();
-    this.marketService.combineMarkets();
   }
 }

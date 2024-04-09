@@ -1,7 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { endpoints } from '../environments/endpoints';
 import { HttpService } from '@nestjs/axios';
-import { catchError, firstValueFrom } from 'rxjs';
 import { WebSocket } from 'isomorphic-ws';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { ConfigService } from '@nestjs/config';
@@ -34,22 +32,6 @@ export abstract class WebsocketAbstract {
     this.onConnect();
     this.handleError();
     this.onClose();
-  }
-
-  private getProxyList() {
-    firstValueFrom(
-      this.httpService.get(endpoints.geonode).pipe(
-        catchError((err) => {
-          throw new Error(err);
-        }),
-      ),
-    )
-      .then((res) => {
-        this.logger.log(res.data);
-      })
-      .catch((err) => {
-        this.logger.error(err);
-      });
   }
 
   protected onConnect() {

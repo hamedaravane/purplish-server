@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OmpfinexService } from 'src/market/services/ompfinex/ompfinex.service';
-import { Subject } from 'rxjs';
 import { WebsocketClient } from 'binance';
-import { SocksProxyAgent } from 'socks-proxy-agent';
 import { WsMessageAggTradeFormatted } from 'binance/lib/types/websockets';
+import { Subject } from 'rxjs';
+import { OmpfinexService } from '@market/services/ompfinex/ompfinex.service';
 import { ConfigService } from '@nestjs/config';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 
 @Injectable()
 export class BinanceService {

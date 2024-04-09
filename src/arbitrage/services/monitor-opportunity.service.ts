@@ -1,38 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { CurrencyArbitrage } from '../entity/currency-arbitrage.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ArbitrageService } from './arbitrage.service';
-import { firstValueFrom, interval, Subject, takeUntil, throttle } from 'rxjs';
-import { MarketService } from 'src/market/services/market/market.service';
-import Big from 'big.js';
+import { CurrencyArbitrage } from '@arbitrage/entity/currency-arbitrage.entity';
+import { MarketService } from '@market/services/market/market.service';
 
 @Injectable()
 export class MonitorOpportunityService {
-  arbitrageActionsSnapShot = new Map<string, any>();
-  pauseSub = new Subject<void>();
   constructor(
     @InjectRepository(CurrencyArbitrage)
-    private currencyArbitrageRepository: Repository<CurrencyArbitrage>,
-    private readonly arbitrageService: ArbitrageService,
     private readonly marketService: MarketService,
-  ) {
-    this.readyToSnapShotOpportunities();
-  }
+  ) {}
 
-  readyToSnapShotOpportunities() {
-    this.arbitrageService.filteredMarketsSubject
-      .asObservable()
+  /*readyToSnapShotOpportunities() {
+    this.arbitrageService
+      .getCurrencyArbitrageData$()
       .pipe(takeUntil(this.pauseSub.asObservable()))
       .subscribe(async (arr) => {
-        if (arr.length > 0) {
+        if (arr.length > 10) {
           this.pauseSub.next();
           await this.snapShotOpportunities();
         }
       });
-  }
+  }*/
 
-  async snapShotOpportunities() {
+  /*async snapShotOpportunities() {
     const opportunities = await firstValueFrom(
       this.arbitrageService.filteredMarketsSubject.asObservable(),
     );
@@ -49,9 +39,9 @@ export class MonitorOpportunityService {
     });
     await this.currencyArbitrageRepository.save(arbitrage);
     await this.monitorOmpfinexData();
-  }
+  }*/
 
-  async updateOpportunityWhenTargetReached(
+  /*async updateOpportunityWhenTargetReached(
     currencyId: string,
     currentPrice: number,
   ) {
@@ -84,22 +74,19 @@ export class MonitorOpportunityService {
         }
       }
     }
-  }
+  }*/
 
-  async monitorOmpfinexData() {
-    this.marketService.marketComparisonSubject
-      .asObservable()
-      .pipe(throttle(() => interval(1500)))
-      .subscribe({
-        next: (ompfinexMarketWebsocket) => {
-          ompfinexMarketWebsocket.map(async (market) => {
-            await this.updateOpportunityWhenTargetReached(
-              market.currencyId,
-              Big(market.ompfinex.price).toNumber(),
-            );
-          });
-        },
-        error: (error) => console.error(error),
-      });
-  }
+  /*async monitorOmpfinexData() {
+    this.combinedMarkets$.pipe(throttle(() => interval(1500))).subscribe({
+      next: (ompfinexMarketWebsocket) => {
+        ompfinexMarketWebsocket.map(async (market) => {
+          await this.updateOpportunityWhenTargetReached(
+            market.currencyId,
+            Big(market.ompfinex.price).toNumber(),
+          );
+        });
+      },
+      error: (error) => console.error(error),
+    });
+  }*/
 }

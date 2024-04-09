@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { endpoints } from 'src/market/environments/endpoints';
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { AxiosError } from 'axios';
 import { catchError, firstValueFrom, map, Subject } from 'rxjs';
+import { endpoints } from '@market/environments/endpoints';
+import { WebsocketAbstract } from '@market/services/websocket.abstract';
 import {
   KucoinPublicBulletResponse,
   KucoinWebsocketMessage,
   MarketData,
-} from 'src/market/interfaces/kucoin.interface';
-import { AxiosError } from 'axios';
-import { WebsocketAbstract } from '../websocket.abstract';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
+} from '@market/interfaces/kucoin.interface';
 
 @Injectable()
 export class KucoinService extends WebsocketAbstract {

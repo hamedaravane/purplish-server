@@ -9,7 +9,6 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -17,33 +16,34 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "baseUrl": "./",
     "paths": {
       "@shared/*": [
-        "src/app/shared/*"
+        "src/shared/*"
       ],
       "@market/*": [
-        "src/app/market/*"
+        "src/market/*"
       ],
       "@arbitrage/*": [
-        "src/app/arbitrage/*"
+        "src/arbitrage/*"
       ],
       "@trading/*": [
-        "src/app/trading/*"
+        "src/trading/*"
       ],
       "@preferences/*": [
-        "src/app/preferences/*"
+        "src/preferences/*"
       ],
       "@auth/*": [
-        "src/app/auth/*"
+        "src/auth/*"
       ],
       "@notifications/*": [
-        "src/app/notifications/*"
+        "src/notifications/*"
       ],
       "@core/*": [
-        "src/app/core/*"
+        "src/core/*"
       ],
       "@layout/*": [
-        "src/app/layout/*"
+        "src/layout/*"
       ],
       "@environment": [
         "src/environments/environment.ts"

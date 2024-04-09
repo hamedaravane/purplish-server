@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { endpoints } from '../../market/environments/endpoints';
-import { firstValueFrom, map, Subject } from 'rxjs';
+import { MarketService } from '@market/services/market/market.service';
+import { filter, firstValueFrom, map, Subject } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import {
   CurrencyArbitrageData,
   OmpfinexApiResponse,
   UserData,
-} from '../interface/arbitrage.interface';
-import { MarketService } from '../../market/services/market/market.service';
+} from '@arbitrage/interface/arbitrage.interface';
+import { endpoints } from '@market/environments/endpoints';
 import Big from 'big.js';
 
 @Injectable()
@@ -20,10 +20,8 @@ export class ArbitrageService {
   private readonly logger = new Logger(ArbitrageService.name);
   private readonly ompfinexTransactionFeeSubject = new Subject<number>();
   private ompfinexTransactionFee = 0.35;
-  private readonly marketsSubject = this.marketService.marketComparisonSubject;
-  public readonly filteredMarketsSubject = new Subject<
-    CurrencyArbitrageData[]
-  >();
+  private readonly combinedMarkets$ = this.marketService.combineMarkets$();
+
   public ompfinexTransactionFee$ =
     this.ompfinexTransactionFeeSubject.asObservable();
 
@@ -44,60 +42,49 @@ export class ArbitrageService {
     }
   }
 
-  public findOpportunity() {
-    this.marketsSubject
-      .asObservable()
-      .pipe(
-        map((value) => {
-          return value
-            .map((market) => {
-              if (market.binance) {
-                return {
-                  currencyId: market.currencyId,
-                  currencyName: market.currencyName,
-                  iconPath: market.iconPath,
-                  name: market.name,
-                  comparedWith: market.binance.exchange.name,
-                  diffPercentage: market.binance.diffPricePercent,
-                  label: this.getWorthOfAction(
-                    market.binance.diffPricePercent,
-                    this.ompfinexTransactionFee,
-                  ),
-                  targetPrice: market.binance.price,
-                  actionPrice: market.ompfinex.price,
-                } as CurrencyArbitrageData;
-              }
-              if (market.kucoin) {
-                return {
-                  currencyId: market.currencyId,
-                  currencyName: market.currencyName,
-                  iconPath: market.iconPath,
-                  name: market.name,
-                  comparedWith: market.kucoin.exchange.name,
-                  diffPercentage: market.kucoin.diffPricePercent,
-                  label: this.getWorthOfAction(
-                    market.kucoin.diffPricePercent,
-                    this.ompfinexTransactionFee,
-                  ),
-                  targetPrice: market.kucoin.price,
-                  actionPrice: market.ompfinex.price,
-                } as CurrencyArbitrageData;
-              }
-              return null;
-            })
-            .filter((value: CurrencyArbitrageData | null) => {
-              if (value) {
-                return Big(value.label).gt(0);
-              } else {
-                return false;
-              }
-            })
-            .sort((a, b) => b.label - a.label);
-        }),
-      )
-      .subscribe((value: CurrencyArbitrageData[]) => {
-        this.filteredMarketsSubject.next(value);
-      });
+  getCurrencyArbitrageData$() {
+    return this.combinedMarkets$.pipe(
+      map((combinedMarket) => {
+        if (combinedMarket.binance) {
+          return {
+            currencyId: combinedMarket.currencyId,
+            currencyName: combinedMarket.currencyName,
+            iconPath: combinedMarket.iconPath,
+            name: combinedMarket.name,
+            comparedWith: combinedMarket.binance.exchange.name,
+            diffPercentage: combinedMarket.binance.diffPricePercent,
+            label: this.getWorthOfAction(
+              combinedMarket.binance.diffPricePercent,
+              this.ompfinexTransactionFee,
+            ),
+            targetPrice: combinedMarket.binance.price,
+            actionPrice: combinedMarket.ompfinex.price,
+          } as CurrencyArbitrageData;
+        }
+        if (combinedMarket.kucoin) {
+          return {
+            currencyId: combinedMarket.currencyId,
+            currencyName: combinedMarket.currencyName,
+            iconPath: combinedMarket.iconPath,
+            name: combinedMarket.name,
+            comparedWith: combinedMarket.kucoin.exchange.name,
+            diffPercentage: combinedMarket.kucoin.diffPricePercent,
+            label: this.getWorthOfAction(
+              combinedMarket.kucoin.diffPricePercent,
+              this.ompfinexTransactionFee,
+            ),
+            targetPrice: combinedMarket.kucoin.price,
+            actionPrice: combinedMarket.ompfinex.price,
+          } as CurrencyArbitrageData;
+        }
+        return null;
+      }),
+      filter((currencyArbitrageData) => {
+        if (currencyArbitrageData) {
+          return Big(currencyArbitrageData.label).gt(0);
+        }
+      }),
+    );
   }
 
   private getWorthOfAction(diffPricePercent: number, fee: number): number {
@@ -105,7 +92,7 @@ export class ArbitrageService {
       .abs()
       .minus(Big(fee).times(2));
     if (netProfitPercentage.lte(0)) return 0;
-    const rating = netProfitPercentage.div(8).plus(0.5);
+    const rating = netProfitPercentage.div(5);
     return Math.min(Math.max(rating.toNumber(), 0.5), 5);
   }
 }
