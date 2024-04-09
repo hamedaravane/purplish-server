@@ -18,6 +18,7 @@
     "noFallthroughCasesInSwitch": false,
     "baseUrl": "./",
     "paths": {
+      "@app/*": ["src/app.*.ts", "src/app.*.*.ts"],
       "@shared/*": [
         "src/shared/*"
       ],
