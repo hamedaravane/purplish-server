@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { KucoinService } from '@market/services/kucoin/kucoin.service';
 import { OmpfinexService } from '@market/services/ompfinex/ompfinex.service';
 import { BinanceService } from '@market/services/binance/binance.service';
@@ -9,7 +9,7 @@ import {
 } from '@market/interfaces/market.interface';
 
 @Injectable()
-export class MarketService {
+export class MarketService implements OnModuleInit {
   private readonly logger = new Logger(MarketService.name);
 
   constructor(
@@ -17,6 +17,10 @@ export class MarketService {
     private readonly ompfinexService: OmpfinexService,
     private readonly binanceService: BinanceService,
   ) {}
+
+  onModuleInit(): any {
+    this.connectToExchanges().then();
+  }
 
   async connectToExchanges() {
     await this.ompfinexService.getOmpfinexMarkets();
