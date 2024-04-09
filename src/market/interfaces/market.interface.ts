@@ -17,6 +17,8 @@ interface MarketDetails {
   timestamp: number;
   volume: number;
   price: number;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 export interface MarketDetailsWithDiff extends MarketDetails {
@@ -43,6 +45,8 @@ export function combineExchanges(
     name: omp.name,
     ompfinex: {
       timestamp: omp.timestamp,
+      minPrice: omp.minPrice,
+      maxPrice: omp.maxPrice,
       volume: Big(omp.volume).toNumber(),
       price: Big(omp.price).toNumber(),
     },

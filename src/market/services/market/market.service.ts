@@ -32,14 +32,14 @@ export class MarketService implements OnModuleInit {
 
   combineMarkets$(): Observable<MarketComparison> {
     return combineLatest([
-      this.ompfinexService.ompfinexMarketWebsocket$,
+      this.ompfinexService.OmpfinexMarketWsSubject,
       this.kucoinService.kucoinWsResponseSubject,
       this.binanceService.binanceWsResponseSubject,
     ]).pipe(
       map(([omp, kucoin, binance]) => {
         return combineExchanges(omp, kucoin, binance);
       }),
-      share(),
+      // share(),
     );
   }
 }

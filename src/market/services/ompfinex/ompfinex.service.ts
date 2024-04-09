@@ -10,18 +10,11 @@ import {
   OmpfinexMarketWebsocket,
   OmpfinexMarketWebsocketDto,
 } from '@market/interfaces/ompfinex.interface';
-import {
-  asapScheduler,
-  catchError,
-  distinct,
-  firstValueFrom,
-  map,
-  Observable,
-  scheduled,
-  share,
-} from 'rxjs';
+
 import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
+import { WebSocket } from 'isomorphic-ws';
+import { catchError, firstValueFrom, map, Subject } from 'rxjs';
 
 @Injectable()
 export class OmpfinexService {
@@ -29,10 +22,8 @@ export class OmpfinexService {
   private readonly client = new Centrifuge(endpoints.ompfinexStreamBaseUrl, {
     websocket: WebSocket,
   });
-  public readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
-  private ompfinexMarketWs$ = new Observable<OmpfinexMarketWebsocket>();
-  public readonly ompfinexMarketWebsocket$: Observable<OmpfinexMarketWebsocket> =
-    this.ompfinexMarketWs$;
+  readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
+  readonly OmpfinexMarketWsSubject = new Subject<OmpfinexMarketWebsocket>();
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -92,13 +83,13 @@ export class OmpfinexService {
     });
     sub.on('publication', (ctx) => {
       const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
-      this.ompfinexMarketWs$ = scheduled(ws.data, asapScheduler).pipe(
-        map<OmpfinexMarketWebsocketDto, OmpfinexMarketWebsocket>((data) => {
-          return convertOmpfinexWsResponse(data, this.ompfinexMarketsMap);
-        }),
-        distinct(({ price, volume }) => ({ price, volume })),
-        share(),
-      );
+      for (const data of ws.data) {
+        const wsResponse = convertOmpfinexWsResponse(
+          data,
+          this.ompfinexMarketsMap,
+        );
+        this.OmpfinexMarketWsSubject.next(wsResponse);
+      }
     });
     sub.subscribe();
   }

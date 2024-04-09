@@ -20,7 +20,6 @@ export class ArbitrageService {
   private readonly logger = new Logger(ArbitrageService.name);
   private readonly ompfinexTransactionFeeSubject = new Subject<number>();
   private ompfinexTransactionFee = 0.35;
-  private readonly combinedMarkets$ = this.marketService.combineMarkets$();
 
   public ompfinexTransactionFee$ =
     this.ompfinexTransactionFeeSubject.asObservable();
@@ -43,7 +42,7 @@ export class ArbitrageService {
   }
 
   getCurrencyArbitrageData$() {
-    return this.combinedMarkets$.pipe(
+    return this.marketService.combineMarkets$().pipe(
       map((combinedMarket) => {
         if (combinedMarket.binance) {
           return {

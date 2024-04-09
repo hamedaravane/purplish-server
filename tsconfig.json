@@ -18,7 +18,6 @@
     "noFallthroughCasesInSwitch": false,
     "baseUrl": "./",
     "paths": {
-      "@app/*": ["src/app.*.ts", "src/app.*.*.ts"],
       "@shared/*": [
         "src/shared/*"
       ],
@@ -30,6 +29,9 @@
       ],
       "@trading/*": [
         "src/trading/*"
+      ],
+      "@database-config/*": [
+        "src/database-config/*"
       ],
       "@preferences/*": [
         "src/preferences/*"
