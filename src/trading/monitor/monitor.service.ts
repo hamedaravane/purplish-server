@@ -37,6 +37,12 @@ export class MonitorService implements OnModuleInit {
         await this.currencyArbitrageRepository.save(currency);
         this.logger.log(`Saved new currency: ${currency.currencyId}`);
       } else {
+        await this.currencyArbitrageRepository.update(
+          {
+            currencyId: data.currencyId,
+          },
+          { currentPrice: data.actionPrice },
+        );
         this.logger.log(`Currency ${data.currencyId} already exists.`);
       }
     } catch (e) {
