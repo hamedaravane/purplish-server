@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OmpfinexService } from '@market/services/ompfinex/ompfinex.service';
 import { Subject } from 'rxjs';
-import { WebsocketClient } from 'binance';
+import { WebsocketClient, LogParams } from 'binance';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { WsMessageAggTradeFormatted } from 'binance/lib/types/websockets';
 import { ConfigService } from '@nestjs/config';
@@ -28,12 +28,22 @@ export class BinanceService {
     const proxyPort = this.configService.get('PROXY_SOCKS5_PORT');
     const agent = new SocksProxyAgent(`${proxyHost}:${proxyPort}`);
 
-    this.client = new WebsocketClient({
-      beautify: true,
-      wsOptions: {
-        agent,
+    this.client = new WebsocketClient(
+      {
+        beautify: true,
+        wsOptions: {
+          agent,
+        },
       },
-    });
+      {
+        silly: () => {},
+        debug: () => {},
+        notice: () => {},
+        info: () => {},
+        warning: () => {},
+        error: () => {},
+      },
+    );
     this.subscription();
     this.handleMessages();
   }

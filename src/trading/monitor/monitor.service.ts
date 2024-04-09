@@ -16,20 +16,31 @@ export class MonitorService implements OnModuleInit {
   ) {}
   onModuleInit(): any {
     this.arbitrageService.getCurrencyArbitrageData$().subscribe({
-      next: (value) => this.processArbitrageData(value),
+      next: async (value) => {
+        await this.processArbitrageData(value);
+      },
       error: (err) => this.logger.warn(err),
     });
   }
 
   private async processArbitrageData(data: CurrencyArbitrageData) {
+    this.logger.log(data);
     try {
-      this.selectedDbCurrency =
-        await this.currencyArbitrageRepository.findOneBy({
+      let currency = await this.currencyArbitrageRepository.findOneBy({
+        currencyId: data.currencyId,
+      });
+      if (!currency) {
+        currency = this.currencyArbitrageRepository.create({
           currencyId: data.currencyId,
+          currencyName: data.currencyName,
         });
+        await this.currencyArbitrageRepository.save(currency);
+        this.logger.log(`Saved new currency: ${currency.currencyId}`);
+      } else {
+        this.logger.log(`Currency ${data.currencyId} already exists.`);
+      }
     } catch (e) {
-      this.logger.log('cannot find currency id in database-config', e);
-      await this.currencyArbitrageRepository.save(data);
+      this.logger.error('Error processing arbitrage data', e);
     }
   }
 }

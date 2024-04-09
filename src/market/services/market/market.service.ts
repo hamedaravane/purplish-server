@@ -26,8 +26,8 @@ export class MarketService implements OnModuleInit {
     await this.ompfinexService.getOmpfinexMarkets();
     this.ompfinexService.createConnection();
     this.ompfinexService.createSubscription();
-    this.binanceService.createConnection();
     await this.kucoinService.createConnection();
+    this.binanceService.createConnection();
   }
 
   combineMarkets$(): Observable<MarketComparison> {

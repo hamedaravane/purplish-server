@@ -25,11 +25,16 @@ export class KucoinService extends WebsocketAbstract {
   }
 
   async createConnection() {
-    const publicBulletResponse = await this.getPublicBulletResponse();
-    const instanceServer = publicBulletResponse.instanceServers[0];
-    this.pingInterval = instanceServer.pingInterval;
-    const endpoint = `${instanceServer.endpoint}?token=${publicBulletResponse.token}`;
-    this.connectThroughProxy(endpoint);
+    try {
+      const publicBulletResponse = await this.getPublicBulletResponse();
+      const instanceServer = publicBulletResponse.instanceServers[0];
+      this.pingInterval = instanceServer.pingInterval;
+      const endpoint = `${instanceServer.endpoint}?token=${publicBulletResponse.token}`;
+      this.connectThroughProxy(endpoint);
+    } catch (e) {
+      this.logger.error('could not connect to kucoin', e);
+      throw e;
+    }
   }
 
   private async getPublicBulletResponse() {
