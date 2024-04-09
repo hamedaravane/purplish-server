@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CurrencyArbitrage } from '@arbitrage/entity/currency-arbitrage.entity';
+import { CurrencyArbitrage } from '@trading/entity/currency-arbitrage.entity';
 import { MarketService } from '@market/services/market/market.service';
 
 @Injectable()

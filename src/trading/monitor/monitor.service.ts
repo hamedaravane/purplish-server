@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ArbitrageService } from '@arbitrage/services/arbitrage.service';
 import { Repository } from 'typeorm';
-import { CurrencyArbitrage } from '@arbitrage/entity/currency-arbitrage.entity';
+import { CurrencyArbitrage } from '@trading/entity/currency-arbitrage.entity';
 
 @Injectable()
 export class MonitorService {
