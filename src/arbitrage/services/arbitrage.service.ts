@@ -10,6 +10,7 @@ import {
 } from '@arbitrage/interface/arbitrage.interface';
 import { endpoints } from '@market/environments/endpoints';
 import Big from 'big.js';
+import { MarketComparison } from '@market/interfaces/market.interface';
 
 @Injectable()
 export class ArbitrageService {
@@ -43,37 +44,49 @@ export class ArbitrageService {
 
   getCurrencyArbitrageData$() {
     return this.marketService.combineMarkets$().pipe(
-      map((combinedMarket) => {
+      map<MarketComparison, CurrencyArbitrageData | null>((combinedMarket) => {
         if (combinedMarket.binance) {
+          const isLong = Big(combinedMarket.binance.price).gt(
+            combinedMarket.ompfinex.price,
+          );
           return {
             currencyId: combinedMarket.currencyId,
             currencyName: combinedMarket.currencyName,
             iconPath: combinedMarket.iconPath,
-            name: combinedMarket.name,
             comparedWith: combinedMarket.binance.exchange.name,
             diffPercentage: combinedMarket.binance.diffPricePercent,
             label: this.getWorthOfAction(
               combinedMarket.binance.diffPricePercent,
               this.ompfinexTransactionFee,
             ),
+            currentPrice: combinedMarket.ompfinex.price,
+            currentVolume: combinedMarket.ompfinex.volume,
+            currentMaxPrice: combinedMarket.ompfinex.maxPrice,
+            currentMinPrice: combinedMarket.ompfinex.minPrice,
             targetPrice: combinedMarket.binance.price,
-            actionPrice: combinedMarket.ompfinex.price,
+            position: isLong ? 'long' : 'short',
           } as CurrencyArbitrageData;
         }
         if (combinedMarket.kucoin) {
+          const isLong = Big(combinedMarket.kucoin.price).gt(
+            combinedMarket.ompfinex.price,
+          );
           return {
             currencyId: combinedMarket.currencyId,
             currencyName: combinedMarket.currencyName,
             iconPath: combinedMarket.iconPath,
-            name: combinedMarket.name,
             comparedWith: combinedMarket.kucoin.exchange.name,
             diffPercentage: combinedMarket.kucoin.diffPricePercent,
             label: this.getWorthOfAction(
               combinedMarket.kucoin.diffPricePercent,
               this.ompfinexTransactionFee,
             ),
+            currentPrice: combinedMarket.ompfinex.price,
+            currentVolume: combinedMarket.ompfinex.volume,
+            currentMaxPrice: combinedMarket.ompfinex.maxPrice,
+            currentMinPrice: combinedMarket.ompfinex.minPrice,
             targetPrice: combinedMarket.kucoin.price,
-            actionPrice: combinedMarket.ompfinex.price,
+            position: isLong ? 'long' : 'short',
           } as CurrencyArbitrageData;
         }
         return null;

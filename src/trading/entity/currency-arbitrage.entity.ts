@@ -12,9 +12,6 @@ export class CurrencyArbitrage {
   currencyName: string;
 
   @Column()
-  name: string;
-
-  @Column()
   comparedWith: string;
 
   @Column('decimal', {
@@ -50,9 +47,30 @@ export class CurrencyArbitrage {
   })
   currentPrice: number;
 
+  @Column('decimal', {
+    precision: 30,
+    scale: 15,
+  })
+  currentVolume: number;
+
+  @Column('decimal', {
+    precision: 30,
+    scale: 15,
+  })
+  currentMaxPrice: number;
+
+  @Column('decimal', {
+    precision: 30,
+    scale: 15,
+  })
+  currentMinPrice: number;
+
   @Column({ default: false })
   isTouchedTarget: boolean;
 
   @Column({ nullable: true })
   targetTouchTimestamp: Date | null;
+
+  @Column({ nullable: false })
+  position: 'short' | 'long';
 }

@@ -41,14 +41,19 @@ interface EnumItem {
   label: string;
 }
 
+export type position = 'short' | 'long';
+
 export interface CurrencyArbitrageData {
   currencyId: string;
   currencyName: string;
   iconPath: string;
-  name: string;
   comparedWith: string;
   diffPercentage: number;
   label: number;
+  currentPrice: number;
+  currentVolume: number;
+  currentMaxPrice: number;
+  currentMinPrice: number;
   targetPrice: number;
-  actionPrice: number;
+  position: position;
 }
