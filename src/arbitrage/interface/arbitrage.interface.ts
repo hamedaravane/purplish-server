@@ -47,8 +47,8 @@ export interface CurrencyArbitrageData {
   currencyId: string;
   currencyName: string;
   iconPath: string;
-  comparedWith: string;
-  diffPercentage: number;
+  comparisonCurrency: string;
+  priceDiffPercentage: number;
   label: number;
   currentPrice: number;
   currentVolume: number;
@@ -56,4 +56,10 @@ export interface CurrencyArbitrageData {
   currentMinPrice: number;
   targetPrice: number;
   position: position;
+  createdAt: Date;
+  updatedAt: Date;
+  historicalPriceChanges?: number;
+  isActive?: boolean;
+  profitEstimate?: number;
+  fee: number;
 }

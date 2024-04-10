@@ -53,8 +53,8 @@ export class ArbitrageService {
             currencyId: combinedMarket.currencyId,
             currencyName: combinedMarket.currencyName,
             iconPath: combinedMarket.iconPath,
-            comparedWith: combinedMarket.binance.exchange.name,
-            diffPercentage: combinedMarket.binance.diffPricePercent,
+            comparisonCurrency: combinedMarket.binance.exchange.name,
+            priceDiffPercentage: combinedMarket.binance.diffPricePercent,
             label: this.getWorthOfAction(
               combinedMarket.binance.diffPricePercent,
               this.ompfinexTransactionFee,
@@ -75,8 +75,8 @@ export class ArbitrageService {
             currencyId: combinedMarket.currencyId,
             currencyName: combinedMarket.currencyName,
             iconPath: combinedMarket.iconPath,
-            comparedWith: combinedMarket.kucoin.exchange.name,
-            diffPercentage: combinedMarket.kucoin.diffPricePercent,
+            comparisonCurrency: combinedMarket.kucoin.exchange.name,
+            priceDiffPercentage: combinedMarket.kucoin.diffPricePercent,
             label: this.getWorthOfAction(
               combinedMarket.kucoin.diffPricePercent,
               this.ompfinexTransactionFee,
