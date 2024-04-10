@@ -58,6 +58,7 @@ export interface CurrencyArbitrageData {
   position: position;
   createdAt: Date;
   updatedAt: Date;
+  isTouchedTarget: boolean;
   historicalPriceChanges?: number;
   isActive?: boolean;
   profitEstimate?: number;

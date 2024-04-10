@@ -10,7 +10,6 @@ import Big from 'big.js';
 @Injectable()
 export class MonitorService implements OnModuleInit {
   private readonly logger = new Logger(MonitorService.name);
-  private databaseCurrencies = new Map<string, CurrencyArbitrageData>();
 
   constructor(
     @InjectRepository(CurrencyArbitrage)
@@ -31,16 +30,22 @@ export class MonitorService implements OnModuleInit {
   }
 
   private async processArbitrageData(newData: CurrencyArbitrageData) {
-    if (this.databaseCurrencies.has(newData.currencyId)) {
-      const dbRecord = this.databaseCurrencies.get(newData.currencyId);
-      await this.updateRecord(dbRecord, newData);
-    } else {
-      await this.createNewRecord(newData);
+    try {
+      const dbRecord = await this.currencyArbitrageRepository.findOneBy({
+        currencyId: newData.currencyId,
+      });
+      if (dbRecord) {
+        await this.updateRecord(dbRecord, newData);
+      } else {
+        await this.createNewRecord(newData);
+      }
+    } catch (e) {
+      this.logger.error(e);
     }
   }
 
   private async updateRecord(
-    savedData: CurrencyArbitrageData,
+    savedData: CurrencyArbitrage,
     newData: CurrencyArbitrageData,
   ): Promise<void> {
     const isTouchedTarget = this.getIsTargetTouched(
@@ -48,27 +53,18 @@ export class MonitorService implements OnModuleInit {
       savedData.targetPrice,
       savedData.position,
     );
-    const updateItems = {
+    const updateItems: Partial<CurrencyArbitrageData> = {
       currentPrice: newData.currentPrice,
       currentVolume: newData.currentVolume,
       currentMaxPrice: newData.currentMaxPrice,
       currentMinPrice: newData.currentMinPrice,
-      isTouchedTarget,
+      isTouchedTarget: isTouchedTarget,
     };
     await this.currencyArbitrageRepository.update(
-      {
-        currencyId: savedData.currencyId,
-        targetPrice: savedData.targetPrice,
-        priceDiffPercentage: savedData.priceDiffPercentage,
-      },
+      { id: savedData.id },
       { ...updateItems },
     );
-    this.databaseCurrencies.set(savedData.currencyId, {
-      ...savedData,
-      ...updateItems,
-    });
     if (isTouchedTarget) {
-      this.databaseCurrencies.delete(savedData.currencyId);
       this.logger.debug(`${savedData.currencyId} touched the target price`);
     }
   }
@@ -88,7 +84,6 @@ export class MonitorService implements OnModuleInit {
     try {
       const newRecord = this.currencyArbitrageRepository.create(data);
       await this.currencyArbitrageRepository.save(newRecord);
-      this.databaseCurrencies.set(data.currencyId, data);
       this.logger.log(`new record added to database: ${newRecord.currencyId}`);
     } catch (e) {
       this.logger.error(e);
