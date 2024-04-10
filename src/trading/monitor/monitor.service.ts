@@ -67,7 +67,9 @@ export class MonitorService implements OnModuleInit {
       },
       { ...updateDate },
     );
-    this.databaseCurrencies.delete(currency.currencyId);
+    if (isTouchedTarget) {
+      this.databaseCurrencies.delete(currency.currencyId);
+    }
   }
 
   private getIsTargetTouched(data: CurrencyArbitrageData) {
