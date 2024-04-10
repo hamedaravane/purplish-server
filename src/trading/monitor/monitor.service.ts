@@ -72,9 +72,9 @@ export class MonitorService implements OnModuleInit {
 
   private getIsTargetTouched(data: CurrencyArbitrageData) {
     if (data.position === 'long') {
-      return Big(data.targetPrice).gt(data.currentPrice);
+      return Big(data.currentPrice).gt(data.targetPrice);
     }
-    return Big(data.targetPrice).lt(data.currentPrice);
+    return Big(data.currentPrice).lt(data.targetPrice);
   }
 
   private async createNewRecord(newDara: CurrencyArbitrageData) {
