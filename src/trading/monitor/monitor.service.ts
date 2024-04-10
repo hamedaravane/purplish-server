@@ -58,6 +58,8 @@ export class MonitorService implements OnModuleInit {
     await this.currencyArbitrageRepository.update(
       {
         currencyId: savedData.currencyId,
+        targetPrice: savedData.targetPrice,
+        priceDiffPercentage: savedData.priceDiffPercentage,
       },
       { ...updateItems },
     );
