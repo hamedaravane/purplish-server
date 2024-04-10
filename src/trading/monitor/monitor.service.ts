@@ -33,18 +33,22 @@ export class MonitorService implements OnModuleInit {
   private async processArbitrageData(data: CurrencyArbitrageData) {
     if (this.databaseCurrencies.has(data.currencyId)) {
       const currency = this.databaseCurrencies.get(data.currencyId);
-      await this.updateCurrency(currency, data);
+      await this.updateRecord(currency, data);
     } else {
       await this.createNewRecord(data);
     }
   }
 
-  private async updateCurrency(
-    currency: Omit<CurrencyArbitrage, 'id'>,
+  private async updateRecord(
+    savedData: Omit<CurrencyArbitrage, 'id'>,
     newData: CurrencyArbitrageData,
   ): Promise<void> {
     const now = new Date();
-    const isTouchedTarget = this.getIsTargetTouched(newData);
+    const isTouchedTarget = this.getIsTargetTouched(
+      newData.currentPrice,
+      savedData.targetPrice,
+      savedData.position,
+    );
     const updateItems = {
       currentPrice: newData.currentPrice,
       currentVolume: newData.currentVolume,
@@ -53,34 +57,42 @@ export class MonitorService implements OnModuleInit {
       isTouchedTarget,
       targetTouchTimestamp: isTouchedTarget ? now : null,
     };
-    this.databaseCurrencies.set(currency.currencyId, {
-      currencyId: currency.currencyId,
-      currencyName: currency.currencyName,
-      position: currency.position,
-      actionPrice: newData.currentPrice,
-      comparedWith: currency.comparedWith,
-      diffPercentage: currency.diffPercentage,
-      label: currency.label,
-      actionTimestamp: currency.actionTimestamp,
-      targetPrice: currency.targetPrice,
+    this.databaseCurrencies.set(savedData.currencyId, {
+      currencyId: savedData.currencyId,
+      currencyName: savedData.currencyName,
+      comparedWith: savedData.comparedWith,
+      diffPercentage: savedData.diffPercentage,
+      label: savedData.label,
+      actionTimestamp: savedData.actionTimestamp,
+      targetPrice: savedData.actionPrice,
+      actionPrice: savedData.actionPrice,
+      position: savedData.position,
       ...updateItems,
     });
     await this.currencyArbitrageRepository.update(
       {
-        currencyId: currency.currencyId,
+        currencyId: savedData.currencyId,
       },
       { ...updateItems },
     );
+    this.logger.log(
+      `update ${savedData.currencyId} price to ${newData.currentPrice}`,
+    );
     if (isTouchedTarget) {
-      this.databaseCurrencies.delete(currency.currencyId);
+      this.databaseCurrencies.delete(savedData.currencyId);
+      this.logger.debug(`${savedData.currencyId} touched the target price`);
     }
   }
 
-  private getIsTargetTouched(data: CurrencyArbitrageData) {
-    if (data.position === 'long') {
-      return Big(data.currentPrice).gt(data.targetPrice);
+  private getIsTargetTouched(
+    currentPrice: number,
+    targetPrice: number,
+    position: 'long' | 'short',
+  ) {
+    if (position === 'long') {
+      return Big(currentPrice).gt(targetPrice);
     }
-    return Big(data.currentPrice).lt(data.targetPrice);
+    return Big(currentPrice).lt(targetPrice);
   }
 
   private async createNewRecord(data: CurrencyArbitrageData) {
@@ -95,6 +107,6 @@ export class MonitorService implements OnModuleInit {
     await this.currencyArbitrageRepository.save(
       this.databaseCurrencies.get(data.currencyId),
     );
-    this.logger.log(`Saved new currency: ${data.currencyId}`);
+    this.logger.log(`add new record: ${data.currencyId}`);
   }
 }

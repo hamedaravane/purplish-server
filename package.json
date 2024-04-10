@@ -11,6 +11,7 @@
     "start": "nest start",
     "dev:home": "cross-env NODE_ENV=development.home nest start",
     "dev:work": "cross-env NODE_ENV=development.work nest start",
+    "dev:reza": "cross-env NODE_ENV=development.reza nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
