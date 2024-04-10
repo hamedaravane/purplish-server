@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { CurrencyArbitrage } from '@trading/entity/currency-arbitrage.entity';
 import { CurrencyArbitrageData } from '@arbitrage/interface/arbitrage.interface';
 import { InjectRepository } from '@nestjs/typeorm';
-import { distinctUntilKeyChanged, map } from 'rxjs';
+import { distinctUntilKeyChanged } from 'rxjs';
 import Big from 'big.js';
 
 @Injectable()
@@ -31,25 +31,21 @@ export class MonitorService implements OnModuleInit {
   }
 
   private async processArbitrageData(data: CurrencyArbitrageData) {
-    try {
+    if (this.databaseCurrencies.has(data.currencyId)) {
       const currency = this.databaseCurrencies.get(data.currencyId);
-      if (currency) {
-        await this.updateCurrency(currency, data);
-      } else {
-        await this.createNewRecord(data);
-      }
-    } catch (e) {
-      this.logger.error(e);
+      await this.updateCurrency(currency, data);
+    } else {
+      await this.createNewRecord(data);
     }
   }
 
   private async updateCurrency(
     currency: Omit<CurrencyArbitrage, 'id'>,
     newData: CurrencyArbitrageData,
-  ) {
+  ): Promise<void> {
     const now = new Date();
     const isTouchedTarget = this.getIsTargetTouched(newData);
-    const updateDate = {
+    const updateItems = {
       currentPrice: newData.currentPrice,
       currentVolume: newData.currentVolume,
       currentMaxPrice: newData.currentMaxPrice,
@@ -58,14 +54,22 @@ export class MonitorService implements OnModuleInit {
       targetTouchTimestamp: isTouchedTarget ? now : null,
     };
     this.databaseCurrencies.set(currency.currencyId, {
-      ...currency,
-      ...updateDate,
+      currencyId: currency.currencyId,
+      currencyName: currency.currencyName,
+      position: currency.position,
+      actionPrice: newData.currentPrice,
+      comparedWith: currency.comparedWith,
+      diffPercentage: currency.diffPercentage,
+      label: currency.label,
+      actionTimestamp: currency.actionTimestamp,
+      targetPrice: currency.targetPrice,
+      ...updateItems,
     });
     await this.currencyArbitrageRepository.update(
       {
         currencyId: currency.currencyId,
       },
-      { ...updateDate },
+      { ...updateItems },
     );
     if (isTouchedTarget) {
       this.databaseCurrencies.delete(currency.currencyId);
@@ -79,18 +83,18 @@ export class MonitorService implements OnModuleInit {
     return Big(data.currentPrice).lt(data.targetPrice);
   }
 
-  private async createNewRecord(newDara: CurrencyArbitrageData) {
-    this.databaseCurrencies.set(newDara.currencyId, {
-      ...newDara,
+  private async createNewRecord(data: CurrencyArbitrageData) {
+    this.databaseCurrencies.set(data.currencyId, {
+      ...data,
       actionTimestamp: new Date(),
       isTouchedTarget: false,
       targetTouchTimestamp: null,
-      actionPrice: newDara.currentPrice,
-      targetPrice: newDara.targetPrice,
+      actionPrice: data.currentPrice,
+      targetPrice: data.targetPrice,
     });
     await this.currencyArbitrageRepository.save(
-      this.databaseCurrencies.get(newDara.currencyId),
+      this.databaseCurrencies.get(data.currencyId),
     );
-    this.logger.log(`Saved new currency: ${newDara.currencyId}`);
+    this.logger.log(`Saved new currency: ${data.currencyId}`);
   }
 }
