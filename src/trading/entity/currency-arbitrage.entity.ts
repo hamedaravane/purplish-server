@@ -9,7 +9,7 @@ import {
 @Entity()
 export class CurrencyArbitrage {
   @PrimaryGeneratedColumn()
-  id?: number;
+  id: number;
 
   @Column()
   currencyId: string;
