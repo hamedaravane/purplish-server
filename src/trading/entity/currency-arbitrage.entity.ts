@@ -1,9 +1,15 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class CurrencyArbitrage {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
   @Column()
   currencyId: string;
@@ -12,65 +18,47 @@ export class CurrencyArbitrage {
   currencyName: string;
 
   @Column()
-  comparedWith: string;
+  comparisonExchange: string;
 
   @Column('decimal', {
     precision: 5,
     scale: 3,
   })
-  diffPercentage: number;
+  priceDiffPercentage: number;
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  currentPrice: number;
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  targetPrice: number;
+
+  @Column({ default: false })
+  isTouchedTarget: boolean;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @Column({
+    type: 'enum',
+    enum: ['short', 'long'],
+  })
+  position: 'short' | 'long';
+
+  @Column('bigint')
+  currentVolume: number;
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  currentMaxPrice: number;
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  currentMinPrice: number;
 
   @Column('decimal', {
     precision: 8,
     scale: 2,
   })
   label: number;
-
-  @Column('timestamp')
-  actionTimestamp: Date;
-
-  @Column('decimal', {
-    precision: 30,
-    scale: 15,
-  })
-  targetPrice: number;
-
-  @Column('decimal', {
-    precision: 30,
-    scale: 15,
-  })
-  actionPrice: number;
-
-  @Column('decimal', {
-    precision: 30,
-    scale: 15,
-  })
-  currentPrice: number;
-
-  @Column('decimal', {
-    precision: 30,
-    scale: 15,
-  })
-  currentVolume: number;
-
-  @Column('decimal', {
-    precision: 30,
-    scale: 15,
-  })
-  currentMaxPrice: number;
-
-  @Column('decimal', {
-    precision: 30,
-    scale: 15,
-  })
-  currentMinPrice: number;
-
-  @Column({ default: false })
-  isTouchedTarget: boolean;
-
-  @Column({ nullable: true })
-  targetTouchTimestamp: Date | null;
-
-  @Column({ nullable: false })
-  position: 'short' | 'long';
 }

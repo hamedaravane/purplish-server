@@ -47,7 +47,7 @@ export interface CurrencyArbitrageData {
   currencyId: string;
   currencyName: string;
   iconPath: string;
-  comparisonCurrency: string;
+  comparisonExchange: string;
   priceDiffPercentage: number;
   label: number;
   currentPrice: number;

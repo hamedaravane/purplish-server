@@ -60,8 +60,8 @@ export class MonitorService implements OnModuleInit {
     this.databaseCurrencies.set(savedData.currencyId, {
       currencyId: savedData.currencyId,
       currencyName: savedData.currencyName,
-      comparedWith: savedData.comparedWith,
-      diffPercentage: savedData.diffPercentage,
+      comparisonExchange: savedData.comparisonExchange,
+      priceDiffPercentage: savedData.priceDiffPercentage,
       label: savedData.label,
       actionTimestamp: savedData.actionTimestamp,
       targetPrice: savedData.actionPrice,
