@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { MarketService } from '@market/services/market/market.service';
-import { filter, firstValueFrom, map, Subject, tap } from 'rxjs';
+import { Subject, filter, firstValueFrom, map } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import {
   CurrencyArbitrageData,

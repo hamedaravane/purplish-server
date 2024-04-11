@@ -2,36 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Centrifuge } from 'centrifuge';
 import { endpoints } from '@market/environments/endpoints';
 import {
-  convertOmpfinexWsResponse,
-  convertToOmpfinexMarketDomain,
   OmpfinexDataResponse,
   OmpfinexMarket,
   OmpfinexMarketDto,
   OmpfinexMarketWebsocket,
   OmpfinexMarketWebsocketDto,
+  convertOmpfinexWsResponse,
+  convertToOmpfinexMarketDomain,
 } from '@market/interfaces/ompfinex.interface';
-
 import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 import { WebSocket } from 'isomorphic-ws';
-import {
-  asyncScheduler,
-  catchError,
-  concatMap,
-  debounceTime,
-  delay,
-  delayWhen,
-  distinctUntilKeyChanged,
-  firstValueFrom,
-  from,
-  map,
-  of,
-  scheduled,
-  Subject,
-  timer,
-} from 'rxjs';
-import { QueueScheduler } from 'rxjs/internal/scheduler/QueueScheduler';
-import { AsyncScheduler } from 'rxjs/internal/scheduler/AsyncScheduler';
+import { Subject, catchError, delay, firstValueFrom, from, map } from 'rxjs';
 
 @Injectable()
 export class OmpfinexService {
@@ -40,7 +22,7 @@ export class OmpfinexService {
     websocket: WebSocket,
   });
   readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
-  readonly OmpfinexMarketWsSubject = new Subject<OmpfinexMarketWebsocket>();
+  readonly ompfinexMarketWsSubject = new Subject<OmpfinexMarketWebsocket>();
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -100,16 +82,16 @@ export class OmpfinexService {
     });
     sub.on('publication', (ctx) => {
       const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
-      scheduled(ws.data, asyncScheduler)
+      from(ws.data)
         .pipe(
-          map((data) =>
-            convertOmpfinexWsResponse(data, this.ompfinexMarketsMap),
-          ),
-          distinctUntilKeyChanged('currencyId'),
+          map((data) => {
+            return convertOmpfinexWsResponse(data, this.ompfinexMarketsMap);
+          }),
+          delay(10),
         )
         .subscribe({
           next: (wsResponse) => {
-            this.OmpfinexMarketWsSubject.next(wsResponse);
+            this.ompfinexMarketWsSubject.next(wsResponse);
           },
           error: (err) => {
             this.logger.error('Error processing WebSocket data', err);

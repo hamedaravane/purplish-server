@@ -2,10 +2,10 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { KucoinService } from '@market/services/kucoin/kucoin.service';
 import { OmpfinexService } from '@market/services/ompfinex/ompfinex.service';
 import { BinanceService } from '@market/services/binance/binance.service';
-import { combineLatest, map, Observable, share } from 'rxjs';
+import { Observable, combineLatest, distinctUntilKeyChanged, map } from 'rxjs';
 import {
-  combineExchanges,
   MarketComparison,
+  combineExchanges,
 } from '@market/interfaces/market.interface';
 
 @Injectable()
@@ -17,6 +17,15 @@ export class MarketService implements OnModuleInit {
     private readonly ompfinexService: OmpfinexService,
     private readonly binanceService: BinanceService,
   ) {}
+
+  private kucoinWsResponse$ =
+    this.kucoinService.kucoinWsResponseSubject.asObservable();
+
+  private binanceWsResponse$ =
+    this.binanceService.binanceWsResponseSubject.asObservable();
+
+  private ompfinexMarketWs$ =
+    this.ompfinexService.ompfinexMarketWsSubject.asObservable();
 
   onModuleInit(): any {
     this.connectToExchanges().then();
@@ -32,14 +41,14 @@ export class MarketService implements OnModuleInit {
 
   combineMarkets$(): Observable<MarketComparison> {
     return combineLatest([
-      this.ompfinexService.OmpfinexMarketWsSubject,
-      this.kucoinService.kucoinWsResponseSubject,
-      this.binanceService.binanceWsResponseSubject,
+      this.ompfinexMarketWs$,
+      this.kucoinWsResponse$,
+      this.binanceWsResponse$,
     ]).pipe(
       map(([omp, kucoin, binance]) => {
         return combineExchanges(omp, kucoin, binance);
       }),
-      // share(),
+      distinctUntilKeyChanged('currencyId'),
     );
   }
 }
