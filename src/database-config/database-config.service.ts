@@ -8,7 +8,7 @@ export class DatabaseConfigService implements TypeOrmOptionsFactory {
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     return {
-      type: this.configService.get<'postgres' | 'mysql'>('DATABASE_TYPE'),
+      type: this.configService.get<'mysql'>('DATABASE_TYPE'),
       host: this.configService.get('DATABASE_HOST'),
       port: +this.configService.get('DATABASE_PORT'),
       username: this.configService.get('DATABASE_USERNAME'),

@@ -14,7 +14,24 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 import { WebSocket } from 'isomorphic-ws';
-import { catchError, firstValueFrom, map, Subject } from 'rxjs';
+import {
+  asyncScheduler,
+  catchError,
+  concatMap,
+  debounceTime,
+  delay,
+  delayWhen,
+  distinctUntilKeyChanged,
+  firstValueFrom,
+  from,
+  map,
+  of,
+  scheduled,
+  Subject,
+  timer,
+} from 'rxjs';
+import { QueueScheduler } from 'rxjs/internal/scheduler/QueueScheduler';
+import { AsyncScheduler } from 'rxjs/internal/scheduler/AsyncScheduler';
 
 @Injectable()
 export class OmpfinexService {
@@ -83,13 +100,21 @@ export class OmpfinexService {
     });
     sub.on('publication', (ctx) => {
       const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
-      for (const data of ws.data) {
-        const wsResponse = convertOmpfinexWsResponse(
-          data,
-          this.ompfinexMarketsMap,
-        );
-        this.OmpfinexMarketWsSubject.next(wsResponse);
-      }
+      scheduled(ws.data, asyncScheduler)
+        .pipe(
+          map((data) =>
+            convertOmpfinexWsResponse(data, this.ompfinexMarketsMap),
+          ),
+          distinctUntilKeyChanged('currencyId'),
+        )
+        .subscribe({
+          next: (wsResponse) => {
+            this.OmpfinexMarketWsSubject.next(wsResponse);
+          },
+          error: (err) => {
+            this.logger.error('Error processing WebSocket data', err);
+          },
+        });
     });
     sub.subscribe();
   }
