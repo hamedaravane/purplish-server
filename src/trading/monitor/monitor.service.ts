@@ -1,15 +1,21 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ArbitrageService } from '@arbitrage/services/arbitrage.service';
 import { Repository } from 'typeorm';
 import { CurrencyArbitrage } from '@trading/entity/currency-arbitrage.entity';
 import { CurrencyArbitrageData } from '@arbitrage/interface/arbitrage.interface';
 import { InjectRepository } from '@nestjs/typeorm';
-import { filter } from 'rxjs';
+import { exhaustMap, filter, mergeMap, of, Subscription } from 'rxjs';
 import Big from 'big.js';
 
 @Injectable()
-export class MonitorService implements OnModuleInit {
+export class MonitorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MonitorService.name);
+  private currencyArbitrageSubscription: Subscription;
 
   constructor(
     @InjectRepository(CurrencyArbitrage)
@@ -18,64 +24,64 @@ export class MonitorService implements OnModuleInit {
   ) {}
 
   onModuleInit(): any {
-    this.arbitrageService
+    this.currencyArbitrageSubscription = this.arbitrageService
       .getCurrencyArbitrageData$()
-      .pipe(filter((value) => value.position === 'long'))
+      .pipe(
+        filter((value) => value.position === 'long'),
+        exhaustMap((value) => this.processArbitrageData(value)),
+      )
       .subscribe({
-        next: (value) => {
-          try {
-            this.processArbitrageData(value);
-          } catch (e) {
-            this.logger.error(e);
-          }
-        },
-        error: (err) => this.logger.warn(err),
+        error: (err) => this.logger.error('Error processing offer data:', err),
+        complete: () => this.logger.log('Finished processing offer stream.'),
       });
   }
 
-  private processArbitrageData(newData: CurrencyArbitrageData) {
-    this.currencyArbitrageRepository
-      .findOneBy({
-        currencyId: newData.currencyId,
-      })
-      .then(async (dbRecord) => {
-        if (dbRecord && !dbRecord.isTouchedTarget) {
-          await this.updateRecord(dbRecord, newData);
-        } else {
-          await this.createNewRecord(newData);
-        }
-      })
-      .catch((e) => {
-        this.logger.error(e);
-      });
+  private async processArbitrageData(newData: CurrencyArbitrageData) {
+    const dbRecord = await this.currencyArbitrageRepository.findOneBy({
+      currencyId: newData.currencyId,
+      isTouchedTarget: false,
+    });
+    if (!dbRecord) {
+      await this.createNewRecord(newData);
+    }
+    if (dbRecord && !dbRecord.isTouchedTarget) {
+      await this.updateRecord(dbRecord, newData);
+    }
   }
 
   private async updateRecord(
     savedData: CurrencyArbitrage,
     newData: CurrencyArbitrageData,
   ): Promise<void> {
-    const isTouchedTarget = this.getIsTargetTouched(
-      newData.currentPrice,
-      savedData.targetPrice,
-      savedData.position,
-    );
-    const updateItems: Partial<CurrencyArbitrage> = {
-      currentPrice: newData.currentPrice,
-      currentVolume: newData.currentVolume,
-      currentMaxPrice: newData.currentMaxPrice,
-      currentMinPrice: newData.currentMinPrice,
-      isTouchedTarget: isTouchedTarget,
-    };
-    await this.currencyArbitrageRepository.update(
-      {
-        id: savedData.id,
-        currencyId: savedData.currencyId,
-        isTouchedTarget: false,
-      },
-      { ...updateItems },
-    );
-    if (isTouchedTarget) {
-      this.logger.debug(`${savedData.currencyId} touched: ${isTouchedTarget}`);
+    if (!Big(savedData.currentPrice).eq(newData.currentPrice)) {
+      const isTouchedTarget = this.getIsTargetTouched(
+        newData.currentPrice,
+        savedData.targetPrice,
+        savedData.position,
+      );
+      const updateItems: Partial<CurrencyArbitrage> = {
+        currentPrice: newData.currentPrice,
+        currentVolume: newData.currentVolume,
+        currentMaxPrice: newData.currentMaxPrice,
+        currentMinPrice: newData.currentMinPrice,
+        isTouchedTarget: isTouchedTarget,
+      };
+      await this.currencyArbitrageRepository.update(
+        {
+          id: savedData.id,
+          currencyId: savedData.currencyId,
+          isTouchedTarget: false,
+        },
+        { ...updateItems },
+      );
+      this.logger.log(
+        `${savedData.currencyId} updated price to ${newData.currentPrice} from ${savedData.currentPrice}`,
+      );
+      if (isTouchedTarget) {
+        this.logger.debug(
+          `${savedData.currencyId} touched: ${isTouchedTarget}`,
+        );
+      }
     }
   }
 
@@ -98,5 +104,9 @@ export class MonitorService implements OnModuleInit {
     } catch (e) {
       this.logger.error(e);
     }
+  }
+
+  onModuleDestroy(): any {
+    this.currencyArbitrageSubscription.unsubscribe();
   }
 }

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { KucoinService } from '@market/services/kucoin/kucoin.service';
 import { OmpfinexService } from '@market/services/ompfinex/ompfinex.service';
 import { BinanceService } from '@market/services/binance/binance.service';
