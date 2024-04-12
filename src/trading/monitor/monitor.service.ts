@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { CurrencyArbitrage } from '@trading/entity/currency-arbitrage.entity';
 import { CurrencyArbitrageData } from '@arbitrage/interface/arbitrage.interface';
 import { InjectRepository } from '@nestjs/typeorm';
-import { exhaustMap, filter, mergeMap, of, Subscription } from 'rxjs';
+import { Subscription, exhaustMap, filter } from 'rxjs';
 import Big from 'big.js';
 
 @Injectable()
@@ -43,8 +43,7 @@ export class MonitorService implements OnModuleInit, OnModuleDestroy {
     });
     if (!dbRecord) {
       await this.createNewRecord(newData);
-    }
-    if (dbRecord && !dbRecord.isTouchedTarget) {
+    } else {
       await this.updateRecord(dbRecord, newData);
     }
   }
@@ -74,8 +73,11 @@ export class MonitorService implements OnModuleInit, OnModuleDestroy {
         },
         { ...updateItems },
       );
-      this.logger.log(
-        `${savedData.currencyId} updated price to ${newData.currentPrice} from ${savedData.currentPrice}`,
+      this.priceChangeLogger(
+        savedData.currencyId,
+        newData.currentPrice,
+        savedData.currentPrice,
+        savedData.position,
       );
       if (isTouchedTarget) {
         this.logger.debug(
@@ -100,9 +102,36 @@ export class MonitorService implements OnModuleInit, OnModuleDestroy {
     try {
       const newRecord = this.currencyArbitrageRepository.create(data);
       await this.currencyArbitrageRepository.save(newRecord);
-      this.logger.log(`new record added to database: ${newRecord.currencyId}`);
+      this.logger.fatal(
+        `new record added to database: ${newRecord.currencyId}`,
+      );
     } catch (e) {
       this.logger.error(e);
+    }
+  }
+
+  private priceChangeLogger(
+    currencyId: string,
+    currentPrice: number,
+    savedPrice: number,
+    position: 'long' | 'short' = 'long',
+  ) {
+    const message = `${currencyId} update price: ${savedPrice} => ${currentPrice}`;
+    if (position === 'long') {
+      if (Big(currentPrice).gt(savedPrice)) {
+        this.logger.log(message);
+      }
+      if (Big(currentPrice).lt(savedPrice)) {
+        this.logger.warn(message);
+      }
+    }
+    if (position === 'short') {
+      if (Big(currentPrice).lt(savedPrice)) {
+        this.logger.log(message);
+      }
+      if (Big(currentPrice).gt(savedPrice)) {
+        this.logger.warn(message);
+      }
     }
   }
 
