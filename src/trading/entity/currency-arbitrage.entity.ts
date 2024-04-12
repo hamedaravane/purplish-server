@@ -26,10 +26,10 @@ export class CurrencyArbitrage {
   })
   priceDiffPercentage: number;
 
-  @Column('decimal', { precision: 18, scale: 8 })
+  @Column('decimal', { precision: 18, scale: 15 })
   currentPrice: number;
 
-  @Column('decimal', { precision: 18, scale: 8 })
+  @Column('decimal', { precision: 18, scale: 15 })
   targetPrice: number;
 
   @Column({ default: false })
@@ -50,10 +50,10 @@ export class CurrencyArbitrage {
   @Column('bigint')
   currentVolume: number;
 
-  @Column('decimal', { precision: 18, scale: 8 })
+  @Column('decimal', { precision: 18, scale: 15 })
   currentMaxPrice: number;
 
-  @Column('decimal', { precision: 18, scale: 8 })
+  @Column('decimal', { precision: 18, scale: 15 })
   currentMinPrice: number;
 
   @Column('decimal', {
