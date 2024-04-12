@@ -70,6 +70,42 @@ export class OmpfinexService {
   }
 
   createSubscription() {
+    for (const market of this.ompfinexMarketsMap.values()) {
+      const orderBook = this.client.newSubscription(
+        `public-market:real-orderbook-${market.id}`,
+      );
+      orderBook.on('subscribed', () => {
+        this.logger.log(`successfully subscribed to ${market.baseCurrency}`);
+      });
+      orderBook.on('error', (err) => {
+        this.logger.error(
+          `on subscribing to ${market.baseCurrency} error happened`,
+          err,
+        );
+      });
+      orderBook.on('publication', (ctx) => {
+        const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
+        from(ws.data)
+          .pipe(
+            map((data) => {
+              return convertOmpfinexWsResponse(data, this.ompfinexMarketsMap);
+            }),
+            delay(10),
+          )
+          .subscribe({
+            next: (wsResponse) => {
+              this.ompfinexMarketWsSubject.next(wsResponse);
+            },
+            error: (err) => {
+              this.logger.error('Error processing WebSocket data', err);
+            },
+          });
+      });
+      orderBook.subscribe();
+    }
+  }
+
+  createSubscriptionToOrderBook() {
     const sub = this.client.newSubscription('public-market:r-price-ag');
     sub.on('subscribing', () => {
       this.logger.log('subscribing to market channel...');

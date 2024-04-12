@@ -1,3 +1,5 @@
+import Big from 'big.js';
+
 export interface OmpfinexDataResponse<T> {
   status: string;
   data: T;
@@ -67,6 +69,25 @@ export interface OmpfinexMarketWebsocketDto {
   v: string;
   t: number;
   m: number;
+}
+
+export interface OmpfinexOrderBookWebsocketDto {
+  p: string;
+  a: string;
+  t: 'sell' | 'buy';
+}
+
+export function convertOmpfinexOrderBookWsResponse(
+  dto: OmpfinexOrderBookWebsocketDto[],
+  market: OmpfinexMarket,
+) {
+  return dto.map((order) => {
+    return {
+      side: order.t,
+      price: order.p,
+      volume: Big(order.a).toNumber(),
+    };
+  });
 }
 
 export interface OmpfinexMarketWebsocket {
