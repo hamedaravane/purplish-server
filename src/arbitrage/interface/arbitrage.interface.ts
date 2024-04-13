@@ -48,19 +48,20 @@ export interface CurrencyArbitrageData {
   currencyName: string;
   iconPath: string;
   comparisonExchange: string;
-  priceDiffPercentage: number;
+  priceDiffPercentageWithBuy: number;
+  priceDiffPercentageWithSell: number;
   label: number;
-  currentPrice: number;
-  currentVolume: number;
-  currentMaxPrice: number;
-  currentMinPrice: number;
+  currentBuyPrice: number;
+  currentSellPrice: number;
+  currentBuyVolume: number;
+  currentSellVolume: number;
   targetPrice: number;
   position: position;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
   isTouchedTarget: boolean;
   historicalPriceChanges?: number;
   isActive?: boolean;
   profitEstimate?: number;
-  fee: number;
+  fee?: number;
 }

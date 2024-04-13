@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { CurrencyArbitrage } from '@trading/entity/currency-arbitrage.entity';
 import { CurrencyArbitrageData } from '@arbitrage/interface/arbitrage.interface';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Subscription, exhaustMap, filter } from 'rxjs';
+import { Subscription, exhaustMap, filter, switchMap, mergeMap } from 'rxjs';
 import Big from 'big.js';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class MonitorService implements OnModuleInit, OnModuleDestroy {
       });
   }
 
-  private async processArbitrageData(newData: CurrencyArbitrageData) {
+  private async processArbitrageData(newData: Partial<CurrencyArbitrage>) {
     const dbRecord = await this.currencyArbitrageRepository.findOneBy({
       currencyId: newData.currencyId,
       isTouchedTarget: false,
@@ -50,39 +50,39 @@ export class MonitorService implements OnModuleInit, OnModuleDestroy {
 
   private async updateRecord(
     savedData: CurrencyArbitrage,
-    newData: CurrencyArbitrageData,
+    newData: Partial<CurrencyArbitrage>,
   ): Promise<void> {
-    if (!Big(savedData.currentPrice).eq(newData.currentPrice)) {
-      const isTouchedTarget = this.getIsTargetTouched(
-        newData.currentPrice,
-        savedData.targetPrice,
-        savedData.position,
-      );
-      const updateItems: Partial<CurrencyArbitrage> = {
-        currentPrice: newData.currentPrice,
-        currentVolume: newData.currentVolume,
-        currentMaxPrice: newData.currentMaxPrice,
-        currentMinPrice: newData.currentMinPrice,
-        isTouchedTarget: isTouchedTarget,
-      };
-      await this.currencyArbitrageRepository.update(
-        {
-          id: savedData.id,
-          currencyId: savedData.currencyId,
-          isTouchedTarget: false,
-        },
-        { ...updateItems },
-      );
-      this.priceChangeLogger(
-        savedData.currencyId,
-        newData.currentPrice,
-        savedData.currentPrice,
-        savedData.position,
-      );
-      if (isTouchedTarget) {
-        this.logger.debug(
-          `${savedData.currencyId} touched: ${isTouchedTarget}`,
+    if (savedData.position === 'long') {
+      if (!Big(savedData.currentSellPrice).eq(newData.currentSellPrice)) {
+        const isTouchedTarget = this.getIsTargetTouched(
+          newData.currentSellPrice,
+          savedData.targetPrice,
+          savedData.position,
         );
+        const updateItems: Partial<CurrencyArbitrage> = {
+          currentSellPrice: newData.currentSellPrice,
+          currentSellVolume: newData.currentSellVolume,
+          isTouchedTarget: isTouchedTarget,
+        };
+        await this.currencyArbitrageRepository.update(
+          {
+            id: savedData.id,
+            currencyId: savedData.currencyId,
+            isTouchedTarget: false,
+          },
+          { ...updateItems },
+        );
+        this.priceChangeLogger(
+          savedData.currencyId,
+          newData.currentSellPrice,
+          savedData.currentSellPrice,
+          savedData.position,
+        );
+        if (isTouchedTarget) {
+          this.logger.debug(
+            `${savedData.currencyId} touched: ${isTouchedTarget}`,
+          );
+        }
       }
     }
   }
@@ -98,7 +98,7 @@ export class MonitorService implements OnModuleInit, OnModuleDestroy {
     return Big(currentPrice).lt(targetPrice);
   }
 
-  private async createNewRecord(data: CurrencyArbitrageData) {
+  private async createNewRecord(data: Partial<CurrencyArbitrage>) {
     try {
       const newRecord = this.currencyArbitrageRepository.create(data);
       await this.currencyArbitrageRepository.save(newRecord);

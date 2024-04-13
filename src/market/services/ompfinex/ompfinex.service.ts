@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Centrifuge } from 'centrifuge';
+import { Centrifuge, Subscription } from 'centrifuge';
 import { endpoints } from '@market/environments/endpoints';
 import {
   OmpfinexDataResponse,
@@ -9,11 +9,24 @@ import {
   OmpfinexMarketWebsocketDto,
   convertOmpfinexWsResponse,
   convertToOmpfinexMarketDomain,
+  OmpfinexOrderBookWebsocketDto,
+  convertOmpfinexOrderBookWsResponse,
+  findPriceExtremes,
+  OmpfinexOrderBookWsResponse,
 } from '@market/interfaces/ompfinex.interface';
 import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 import { WebSocket } from 'isomorphic-ws';
-import { Subject, catchError, delay, firstValueFrom, from, map } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  firstValueFrom,
+  from,
+  map,
+  of,
+  exhaustMap,
+} from 'rxjs';
+import Big from 'big.js';
 
 @Injectable()
 export class OmpfinexService {
@@ -23,6 +36,8 @@ export class OmpfinexService {
   });
   readonly ompfinexMarketsMap = new Map<string, OmpfinexMarket>();
   readonly ompfinexMarketWsSubject = new Subject<OmpfinexMarketWebsocket>();
+  readonly ompfinexOrderBookWsSubject =
+    new Subject<OmpfinexOrderBookWsResponse>();
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -84,10 +99,9 @@ export class OmpfinexService {
       const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
       from(ws.data)
         .pipe(
-          map((data) => {
-            return convertOmpfinexWsResponse(data, this.ompfinexMarketsMap);
-          }),
-          delay(10),
+          map((data) =>
+            convertOmpfinexWsResponse(data, this.ompfinexMarketsMap),
+          ),
         )
         .subscribe({
           next: (wsResponse) => {
@@ -101,36 +115,53 @@ export class OmpfinexService {
     sub.subscribe();
   }
 
-  /*createSubscriptionToOrderBook() {
-   for (const market of this.ompfinexMarketsMap.values()) {
-   const orderBook = this.client.newSubscription('public-market:r-price-ag');
-   orderBook.on('subscribed', () => {
-   this.logger.log(`successfully subscribed to ${market.baseCurrency}`);
-   });
-   orderBook.on('error', (err) => {
-   this.logger.error(
-   `on subscribing to ${market.baseCurrency} error happened`,
-   err,
-   );
-   });
-   orderBook.on('publication', (ctx) => {
-   const ws: { data: OmpfinexMarketWebsocketDto[] } = ctx.data;
-   from(ws.data)
-   .pipe(
-   map((data) => {
-   return convertOmpfinexWsResponse(data, this.ompfinexMarketsMap);
-   }),
-   delay(10),
-   )
-   .subscribe({
-   next: (wsResponse) => {
-   this.ompfinexMarketWsSubject.next(wsResponse);
-   },
-   error: (err) => {
-   this.logger.error('Error processing WebSocket data', err);
-   },
-   });
-   });
-   orderBook.subscribe();
-   }*/
+  createOrderBookSubscription() {
+    const channelPrefix = 'public-market:real-orderbook-';
+    this.ompfinexMarketsMap.forEach((market) => {
+      const orderBookSub = this.client.newSubscription(
+        `${channelPrefix}${market.id}`,
+      );
+      orderBookSub.on('subscribing', (ctx) => {
+        this.logger.log(`subscribing to ${ctx.channel}`);
+      });
+      orderBookSub.on('subscribed', (ctx) => {
+        this.logger.log(`successfully subscribed to ${ctx.channel}`);
+      });
+      orderBookSub.on('error', (err) => {
+        this.logger.log(err.channel);
+      });
+      orderBookSub.on('publication', (ctx) => {
+        const channel = ctx.channel;
+        const marketId = this.extractMarketId(channel, channelPrefix);
+        const market = this.getMarketById(marketId);
+        const rawData: OmpfinexOrderBookWebsocketDto[] = ctx.data;
+        const data = findPriceExtremes(rawData);
+        of(data)
+          .pipe(
+            map((data) => {
+              return convertOmpfinexOrderBookWsResponse(data, market);
+            }),
+          )
+          .subscribe({
+            next: (wsResponse) => {
+              this.ompfinexOrderBookWsSubject.next(wsResponse);
+            },
+            error: (err) => {
+              this.logger.error('Error processing WebSocket data', err);
+            },
+          });
+      });
+      orderBookSub.subscribe();
+    });
+  }
+
+  private extractMarketId(channel: string, prefix: string): number {
+    return +channel.substring(prefix.length);
+  }
+
+  private getMarketById(id: number) {
+    return Array.from(this.ompfinexMarketsMap.values()).find(
+      (value) => value.id === id,
+    );
+  }
 }

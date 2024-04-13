@@ -40,8 +40,8 @@ export class BinanceService {
         debug: () => {},
         notice: () => {},
         info: () => {},
-        warning: () => {},
-        error: () => {},
+        warning: (warn) => this.logger.warn(warn),
+        error: (err) => this.logger.error(err),
       },
     );
     this.subscription();

@@ -29,8 +29,12 @@ export class MarketService implements OnModuleInit {
   private binanceWsResponse$ =
     this.binanceService.binanceWsResponseSubject.asObservable();
 
+  /** @deprecated */
   private ompfinexMarketWs$ =
     this.ompfinexService.ompfinexMarketWsSubject.asObservable();
+
+  private ompfinexOrderBookWs$ =
+    this.ompfinexService.ompfinexOrderBookWsSubject.asObservable();
 
   onModuleInit(): any {
     this.connectToExchanges().then();
@@ -39,21 +43,21 @@ export class MarketService implements OnModuleInit {
   async connectToExchanges() {
     await this.ompfinexService.getOmpfinexMarkets();
     this.ompfinexService.createConnection();
-    this.ompfinexService.createSubscription();
+    // this.ompfinexService.createSubscription();
+    this.ompfinexService.createOrderBookSubscription();
     await this.kucoinService.createConnection();
     this.binanceService.createConnection();
   }
 
   combineMarkets$(): Observable<MarketComparison> {
     return combineLatest([
-      this.ompfinexMarketWs$,
+      this.ompfinexOrderBookWs$,
       this.kucoinWsResponse$,
       this.binanceWsResponse$,
     ]).pipe(
       map(([omp, kucoin, binance]) => {
         return combineExchanges(omp, kucoin, binance);
       }),
-      distinctUntilKeyChanged('currencyId'),
     );
   }
 }

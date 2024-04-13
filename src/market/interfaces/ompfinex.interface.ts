@@ -77,17 +77,61 @@ export interface OmpfinexOrderBookWebsocketDto {
   t: 'sell' | 'buy';
 }
 
+export function findPriceExtremes(
+  orderBookWsDto: OmpfinexOrderBookWebsocketDto[],
+): priceExtremes {
+  const bestBuyOrder = orderBookWsDto
+    .filter((data) => data.t === 'buy')
+    .sort((a, b) => {
+      return Big(b.p).minus(a.p).toNumber();
+    })[0];
+  const bestSellOrder = orderBookWsDto
+    .filter((data) => data.t === 'sell')
+    .sort((a, b) => {
+      return Big(a.p).minus(b.p).toNumber();
+    })[0];
+  return {
+    buyPrice: bestBuyOrder.p,
+    buyVolume: bestBuyOrder.a,
+    sellPrice: bestSellOrder.p,
+    sellVolume: bestSellOrder.a,
+  };
+}
+
+export interface priceExtremes {
+  buyPrice: string;
+  buyVolume: string;
+  sellPrice: string;
+  sellVolume: string;
+}
+
+export interface OmpfinexOrderBookWsResponse {
+  id: number;
+  name: string;
+  iconPath?: string;
+  currencyId: string;
+  currencyName: string;
+  buyPrice: string;
+  buyVolume: string;
+  sellPrice: string;
+  sellVolume: string;
+}
+
 export function convertOmpfinexOrderBookWsResponse(
-  dto: OmpfinexOrderBookWebsocketDto[],
+  ws: priceExtremes,
   market: OmpfinexMarket,
-) {
-  return dto.map((order) => {
-    return {
-      side: order.t,
-      price: order.p,
-      volume: Big(order.a).toNumber(),
-    };
-  });
+): OmpfinexOrderBookWsResponse {
+  return {
+    id: market.id,
+    name: market.name,
+    iconPath: market.baseCurrency.iconPath,
+    currencyId: market.baseCurrency.id,
+    currencyName: market.baseCurrency.name,
+    buyPrice: ws.buyPrice,
+    buyVolume: ws.buyVolume,
+    sellPrice: ws.sellPrice,
+    sellVolume: ws.sellVolume,
+  };
 }
 
 export interface OmpfinexMarketWebsocket {

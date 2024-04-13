@@ -1,5 +1,5 @@
 import { WsMessageAggTradeFormatted } from 'binance/lib/types/websockets';
-import { OmpfinexMarketWebsocket } from '@market/interfaces/ompfinex.interface';
+import { OmpfinexOrderBookWsResponse } from '@market/interfaces/ompfinex.interface';
 import { MarketData } from '@market/interfaces/kucoin.interface';
 import Big from 'big.js';
 
@@ -8,31 +8,36 @@ export interface MarketComparison {
   currencyName: string;
   iconPath: string;
   name: string;
-  ompfinex: MarketDetails;
-  binance: MarketDetailsWithDiff | null;
-  kucoin: MarketDetailsWithDiff | null;
+  ompfinex: SourceMarket;
+  binance: DestinationMarket | null;
+  kucoin: DestinationMarket | null;
 }
 
-interface MarketDetails {
+interface SourceMarket {
   timestamp: number;
-  volume: number;
-  price: number;
-  minPrice?: number;
-  maxPrice?: number;
+  buyPrice: string;
+  buyVolume: string;
+  sellPrice: string;
+  sellVolume: string;
 }
 
-export interface MarketDetailsWithDiff extends MarketDetails {
+export interface DestinationMarket {
   exchange: {
     name: string;
     logo: string;
     ranking: number;
   };
-  diffPrice: number;
-  diffPricePercent: number;
+  timestamp: number;
+  volume: number;
+  price: number;
+  diffPriceWithBuy: number;
+  diffPriceWithSell: number;
+  diffPricePercentWithBuy: number;
+  diffPricePercentWithSell: number;
 }
 
 export function combineExchanges(
-  omp: OmpfinexMarketWebsocket,
+  omp: OmpfinexOrderBookWsResponse,
   kucoin: Map<string, MarketData>,
   binance: Map<string, WsMessageAggTradeFormatted>,
 ) {
@@ -44,14 +49,14 @@ export function combineExchanges(
     iconPath: omp.iconPath,
     name: omp.name,
     ompfinex: {
-      timestamp: omp.timestamp,
-      minPrice: omp.minPrice,
-      maxPrice: omp.maxPrice,
-      volume: Big(omp.volume).toNumber(),
-      price: Big(omp.price).toNumber(),
-    },
+      timestamp: new Date().getDate(),
+      buyPrice: omp.buyPrice,
+      buyVolume: omp.buyVolume,
+      sellPrice: omp.sellPrice,
+      sellVolume: omp.sellVolume,
+    } as SourceMarket,
     binance: binanceFound
-      ? {
+      ? ({
           exchange: {
             name: 'binance',
             logo: '',
@@ -60,16 +65,26 @@ export function combineExchanges(
           timestamp: binanceFound.time,
           volume: binanceFound.quantity,
           price: binanceFound.price,
-          diffPrice: Big(binanceFound.price).minus(omp.price).toNumber(),
-          diffPricePercent: Big(binanceFound.price)
-            .minus(omp.price)
+          diffPriceWithBuy: Big(binanceFound.price)
+            .minus(omp.buyPrice)
+            .toNumber(),
+          diffPricePercentWithBuy: Big(binanceFound.price)
+            .minus(omp.buyPrice)
             .div(binanceFound.price)
             .times(100)
             .toNumber(),
-        }
+          diffPriceWithSell: Big(binanceFound.price)
+            .minus(omp.sellPrice)
+            .toNumber(),
+          diffPricePercentWithSell: Big(binanceFound.price)
+            .minus(omp.sellPrice)
+            .div(binanceFound.price)
+            .times(100)
+            .toNumber(),
+        } as DestinationMarket)
       : null,
     kucoin: kucoinFound
-      ? {
+      ? ({
           exchange: {
             name: 'kucoin',
             logo: '',
@@ -78,15 +93,23 @@ export function combineExchanges(
           timestamp: kucoinFound.datetime,
           volume: kucoinFound.vol,
           price: kucoinFound.lastTradedPrice,
-          diffPrice: Big(kucoinFound.lastTradedPrice)
-            .minus(omp.price)
+          diffPriceWithBuy: Big(kucoinFound.lastTradedPrice)
+            .minus(omp.buyPrice)
             .toNumber(),
-          diffPricePercent: Big(kucoinFound.lastTradedPrice)
-            .minus(omp.price)
+          diffPricePercentWithBuy: Big(kucoinFound.lastTradedPrice)
+            .minus(omp.buyPrice)
             .div(kucoinFound.lastTradedPrice)
             .times(100)
             .toNumber(),
-        }
+          diffPriceWithSell: Big(kucoinFound.lastTradedPrice)
+            .minus(omp.sellPrice)
+            .toNumber(),
+          diffPricePercentWithSell: Big(kucoinFound.lastTradedPrice)
+            .minus(omp.sellPrice)
+            .div(kucoinFound.lastTradedPrice)
+            .times(100)
+            .toNumber(),
+        } as DestinationMarket)
       : null,
   } as MarketComparison;
 }
