@@ -25,6 +25,7 @@ import {
   map,
   of,
   exhaustMap,
+  filter,
 } from 'rxjs';
 import Big from 'big.js';
 
@@ -134,10 +135,11 @@ export class OmpfinexService {
         const channel = ctx.channel;
         const marketId = this.extractMarketId(channel, channelPrefix);
         const market = this.getMarketById(marketId);
-        const rawData: OmpfinexOrderBookWebsocketDto[] = ctx.data;
-        const data = findPriceExtremes(rawData);
-        of(data)
+        const rawData: OmpfinexOrderBookWebsocketDto[] | null = ctx.data;
+        of(rawData)
           .pipe(
+            filter(Boolean),
+            map((rawData) => findPriceExtremes(rawData)),
             map((data) => {
               return convertOmpfinexOrderBookWsResponse(data, market);
             }),

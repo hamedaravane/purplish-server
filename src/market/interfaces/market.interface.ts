@@ -8,17 +8,20 @@ export interface MarketComparison {
   currencyName: string;
   iconPath: string;
   name: string;
-  ompfinex: SourceMarket;
-  binance: DestinationMarket | null;
-  kucoin: DestinationMarket | null;
+  sourceMarkets: SourceMarket[];
+  destinationMarkets: DestinationMarket[];
 }
 
 interface SourceMarket {
   timestamp: number;
-  buyPrice: string;
-  buyVolume: string;
-  sellPrice: string;
-  sellVolume: string;
+  buy: {
+    price: number;
+    volume: number;
+  };
+  sell: {
+    price: number;
+    volume: number;
+  };
 }
 
 export interface DestinationMarket {
@@ -28,88 +31,125 @@ export interface DestinationMarket {
     ranking: number;
   };
   timestamp: number;
-  volume: number;
-  price: number;
-  diffPriceWithBuy: number;
-  diffPriceWithSell: number;
-  diffPricePercentWithBuy: number;
-  diffPricePercentWithSell: number;
+  matchVolume: number;
+  matchPrice: number;
+  arbitrage: {
+    buy: {
+      amount: number;
+      percentage: number;
+    };
+    sell: {
+      amount: number;
+      percentage: number;
+    };
+  };
 }
 
 export function combineExchanges(
   omp: OmpfinexOrderBookWsResponse,
   kucoin: Map<string, MarketData>,
   binance: Map<string, WsMessageAggTradeFormatted>,
-) {
-  const kucoinFound = kucoin.get(omp.currencyId);
-  const binanceFound = binance.get(omp.currencyId);
+): MarketComparison {
+  const binanceFound: WsMessageAggTradeFormatted | undefined = binance.get(
+    omp.currencyId,
+  );
+  const kucoinFound: MarketData | undefined = kucoin.get(omp.currencyId);
   return {
     currencyId: omp.currencyId,
     currencyName: omp.currencyName,
     iconPath: omp.iconPath,
     name: omp.name,
-    ompfinex: {
-      timestamp: new Date().getDate(),
-      buyPrice: omp.buyPrice,
-      buyVolume: omp.buyVolume,
-      sellPrice: omp.sellPrice,
-      sellVolume: omp.sellVolume,
-    } as SourceMarket,
-    binance: binanceFound
-      ? ({
-          exchange: {
-            name: 'binance',
-            logo: '',
-            ranking: 1,
-          },
-          timestamp: binanceFound.time,
-          volume: binanceFound.quantity,
-          price: binanceFound.price,
-          diffPriceWithBuy: Big(binanceFound.price)
-            .minus(omp.buyPrice)
-            .toNumber(),
-          diffPricePercentWithBuy: Big(binanceFound.price)
-            .minus(omp.buyPrice)
-            .div(binanceFound.price)
-            .times(100)
-            .toNumber(),
-          diffPriceWithSell: Big(binanceFound.price)
-            .minus(omp.sellPrice)
-            .toNumber(),
-          diffPricePercentWithSell: Big(binanceFound.price)
-            .minus(omp.sellPrice)
-            .div(binanceFound.price)
-            .times(100)
-            .toNumber(),
-        } as DestinationMarket)
-      : null,
-    kucoin: kucoinFound
-      ? ({
-          exchange: {
-            name: 'kucoin',
-            logo: '',
-            ranking: 7,
-          },
-          timestamp: kucoinFound.datetime,
-          volume: kucoinFound.vol,
-          price: kucoinFound.lastTradedPrice,
-          diffPriceWithBuy: Big(kucoinFound.lastTradedPrice)
-            .minus(omp.buyPrice)
-            .toNumber(),
-          diffPricePercentWithBuy: Big(kucoinFound.lastTradedPrice)
-            .minus(omp.buyPrice)
-            .div(kucoinFound.lastTradedPrice)
-            .times(100)
-            .toNumber(),
-          diffPriceWithSell: Big(kucoinFound.lastTradedPrice)
-            .minus(omp.sellPrice)
-            .toNumber(),
-          diffPricePercentWithSell: Big(kucoinFound.lastTradedPrice)
-            .minus(omp.sellPrice)
-            .div(kucoinFound.lastTradedPrice)
-            .times(100)
-            .toNumber(),
-        } as DestinationMarket)
-      : null,
-  } as MarketComparison;
+    sourceMarkets: [
+      {
+        timestamp: new Date().getDate(),
+        buy: {
+          price: Big(omp.buyPrice).toNumber(),
+          volume: Big(omp.buyVolume).toNumber(),
+        },
+        sell: {
+          price: Big(omp.sellPrice).toNumber(),
+          volume: Big(omp.sellVolume).toNumber(),
+        },
+      } as SourceMarket,
+    ],
+    destinationMarkets: [
+      binanceFound
+        ? ({
+            exchange: {
+              name: 'binance',
+              logo: '',
+              ranking: 1,
+            },
+            timestamp: binanceFound.time,
+            matchVolume: binanceFound.quantity,
+            matchPrice: binanceFound.price,
+            arbitrage: {
+              buy: {
+                amount: Big(binanceFound.price).minus(omp.buyPrice).toNumber(),
+                percentage: Big(binanceFound.price)
+                  .minus(omp.buyPrice)
+                  .div(omp.buyPrice)
+                  .times(100)
+                  .toNumber(),
+              },
+              sell: {
+                amount: Big(binanceFound.price).minus(omp.sellPrice).toNumber(),
+                percentage: Big(binanceFound.price)
+                  .minus(omp.sellPrice)
+                  .div(omp.sellPrice)
+                  .times(100)
+                  .toNumber(),
+              },
+            },
+          } as DestinationMarket)
+        : null,
+      normalizeKucoinMarket(omp, kucoinFound),
+    ] as DestinationMarket[],
+  };
 }
+
+function normalizeKucoinMarket(
+  sourceMarket: OmpfinexOrderBookWsResponse,
+  desMarket: MarketData | undefined,
+): DestinationMarket | undefined {
+  if (!desMarket) return undefined;
+  const arbitrageBuy = Big(desMarket.buy)
+    .minus(sourceMarket.buyPrice)
+    .toNumber();
+  const arbitrageBuyPercent = Big(arbitrageBuy)
+    .div(sourceMarket.buyPrice)
+    .times(100)
+    .toNumber();
+  const arbitrageSell = Big(desMarket.sell)
+    .minus(sourceMarket.sellPrice)
+    .toNumber();
+  const arbitrageSellPercent = Big(arbitrageSell)
+    .div(sourceMarket.sellPrice)
+    .times(100)
+    .toNumber();
+  return {
+    exchange: {
+      name: 'kucoin',
+      logo: '',
+      ranking: 7,
+    },
+    timestamp: desMarket.datetime,
+    matchVolume: desMarket.vol,
+    matchPrice: desMarket.lastTradedPrice,
+    arbitrage: {
+      buy: {
+        amount: arbitrageBuy,
+        percentage: arbitrageBuyPercent,
+      },
+      sell: {
+        amount: arbitrageSell,
+        percentage: arbitrageSellPercent,
+      },
+    },
+  };
+}
+
+function normalizeBinanceMarket(
+  sourceMarket: OmpfinexOrderBookWsResponse,
+  desMarket: WsMessageAggTradeFormatted,
+) {}

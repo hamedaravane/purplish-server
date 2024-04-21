@@ -46,7 +46,7 @@ export class ArbitrageService {
     return this.marketService.combineMarkets$().pipe(
       map<MarketComparison, CurrencyArbitrageData | null>((combinedMarket) => {
         if (combinedMarket.binance) {
-          const isLong = Big(combinedMarket.binance.price).gt(
+          const isLong = Big(combinedMarket.binance.matchPrice).gt(
             combinedMarket.ompfinex.sellPrice,
           );
           return {
@@ -68,13 +68,13 @@ export class ArbitrageService {
             currentSellVolume: Big(
               combinedMarket.ompfinex.sellVolume,
             ).toNumber(),
-            targetPrice: combinedMarket.binance.price,
+            targetPrice: combinedMarket.binance.matchPrice,
             position: isLong ? 'long' : 'short',
             isTouchedTarget: false,
           } as CurrencyArbitrageData;
         }
         if (combinedMarket.kucoin) {
-          const isLong = Big(combinedMarket.kucoin.price).gt(
+          const isLong = Big(combinedMarket.kucoin.matchPrice).gt(
             combinedMarket.ompfinex.sellPrice,
           );
           return {
@@ -96,7 +96,7 @@ export class ArbitrageService {
             currentSellVolume: Big(
               combinedMarket.ompfinex.sellVolume,
             ).toNumber(),
-            targetPrice: combinedMarket.kucoin.price,
+            targetPrice: combinedMarket.kucoin.matchPrice,
             position: isLong ? 'long' : 'short',
             isTouchedTarget: false,
           } as CurrencyArbitrageData;
@@ -118,5 +118,15 @@ export class ArbitrageService {
     if (netProfitPercentage.lte(0)) return 0;
     const rating = netProfitPercentage.div(5);
     return Math.min(Math.max(rating.toNumber(), 0.5), 5);
+  }
+
+  private getAvailableExchange(combinedMarket: MarketComparison) {
+    if (combinedMarket.binance) {
+      return combinedMarket.binance;
+    } else if (combinedMarket.kucoin) {
+      return combinedMarket.kucoin;
+    } else {
+      return null;
+    }
   }
 }
